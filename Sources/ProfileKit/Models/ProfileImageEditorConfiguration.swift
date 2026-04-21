@@ -19,6 +19,11 @@ public struct ProfileImageEditorConfiguration: Sendable {
     /// All user-visible strings in the editor. Swap in localized
     /// versions or custom voice here; defaults ship in English.
     public var texts: ProfileImageEditorTexts
+    /// Editor chrome appearance. `.system` follows the device setting
+    /// (default). `.forceDark` / `.forceLight` pin the editor for apps
+    /// with bespoke theming that want the editor to match rather than
+    /// follow the OS.
+    public var appearance: ProfileImageEditorAppearance
 
     public init(
         cropShape: ProfileAvatarShape = .circle,
@@ -33,7 +38,8 @@ public struct ProfileImageEditorConfiguration: Sendable {
         showsAdjustmentControls: Bool = true,
         showsGridOverlay: Bool = true,
         renderConfiguration: ProfileImageRenderConfiguration = .profilePhoto,
-        texts: ProfileImageEditorTexts = .default
+        texts: ProfileImageEditorTexts = .default,
+        appearance: ProfileImageEditorAppearance = .system
     ) {
         self.cropShape = cropShape
         self.minimumZoom = minimumZoom
@@ -48,6 +54,7 @@ public struct ProfileImageEditorConfiguration: Sendable {
         self.showsGridOverlay = showsGridOverlay
         self.renderConfiguration = renderConfiguration
         self.texts = texts
+        self.appearance = appearance
     }
 
     public static let profilePhoto = Self()

@@ -61,6 +61,7 @@ public struct ProfileImageEditorView: View {
         }
         .padding(24)
         .background(.background)
+        .preferredColorScheme(configuration.appearance.preferredColorScheme)
         .onAppear {
             applyRecommendedInitialStateIfNeeded()
         }
