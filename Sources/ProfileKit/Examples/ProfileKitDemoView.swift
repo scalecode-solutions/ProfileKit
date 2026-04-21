@@ -112,6 +112,22 @@ public struct ProfileKitDemoView: View {
         )
     }
 
+    /// Identity reused across the preview tiles so the step-21 content
+    /// enum has a stable `.initials` fallback source when no photo has
+    /// been committed yet.
+    private var previewIdentity: ProfileIdentity {
+        draft.identity ?? ProfileIdentity(displayName: "Taylor Example")
+    }
+
+    /// Content for the preview tiles — a photo if the user has
+    /// committed one, initials otherwise.
+    private var heroContent: ProfileAvatarContent {
+        if let image = latestResult?.image {
+            return .image(image)
+        }
+        return .initials(previewIdentity)
+    }
+
     private var avatarConfiguration: ProfileAvatarConfiguration {
         ProfileAvatarConfiguration(
             size: 120,
@@ -147,10 +163,9 @@ public struct ProfileKitDemoView: View {
                 .font(.title3.weight(.semibold))
 
             // Big hero — exercises the current configuration. Uses the
-            // latest export if present, else the fallback-initials path.
+            // latest export if present, else the initials path.
             ProfileAvatarView(
-                image: latestResult?.image,
-                identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                content: heroContent,
                 configuration: avatarConfiguration
             )
 
@@ -158,14 +173,12 @@ public struct ProfileKitDemoView: View {
             // at different render sizes and in rounded-rect shape.
             HStack(spacing: 12) {
                 ProfileAvatarView(
-                    image: latestResult?.image,
-                    identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                    content: heroContent,
                     configuration: .init(size: 72, shape: .circle, fontWeight: initialsFontWeight.value)
                 )
 
                 ProfileAvatarView(
-                    image: latestResult?.image,
-                    identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                    content: heroContent,
                     configuration: .init(size: 56, shape: .roundedRect(cornerRadius: 18), fontWeight: initialsFontWeight.value)
                 )
             }
