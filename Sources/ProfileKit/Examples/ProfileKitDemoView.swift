@@ -215,15 +215,16 @@ public struct ProfileKitDemoView: View {
     }
 }
 
-/// Demo-side enum wrapping `Font.Weight` — SwiftUI's `Font.Weight`
-/// isn't directly `Identifiable` / iterable, and this is only used to
-/// drive the segmented picker in the demo view.
+/// Demo-side enum wrapping `ProfileFontWeight` for the segmented
+/// picker. `ProfileFontWeight` is itself `CaseIterable` but covers the
+/// full nine-weight range; the demo exposes only the five most commonly
+/// used to keep the picker readable.
 private enum DemoFontWeight: Int, CaseIterable, Identifiable {
     case regular, medium, semibold, bold, heavy
 
     var id: Int { rawValue }
 
-    var value: Font.Weight {
+    var value: ProfileFontWeight {
         switch self {
         case .regular:  return .regular
         case .medium:   return .medium

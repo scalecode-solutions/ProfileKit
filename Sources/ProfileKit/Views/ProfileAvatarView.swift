@@ -26,7 +26,7 @@ public struct ProfileAvatarView: View {
                     .overlay(
                         ProfileAvatarClipShape(shape: configuration.shape)
                             .inset(by: configuration.borderWidth / 2)
-                            .stroke(configuration.borderColor, lineWidth: configuration.borderWidth)
+                            .stroke(configuration.borderColor.color, lineWidth: configuration.borderWidth)
                     )
                     .accessibilityLabel(identity.displayName.isEmpty ? identity.initials : identity.displayName)
             } else {

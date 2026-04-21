@@ -23,8 +23,12 @@ public struct InitialsAvatarView: View {
             )
 
             Text(identity.initials)
-                .font(.system(size: configuration.size * 0.38, weight: configuration.fontWeight, design: .rounded))
-                .foregroundStyle(configuration.resolvedForegroundColor)
+                .font(.system(
+                    size: configuration.size * 0.38,
+                    weight: configuration.fontWeight.fontWeight,
+                    design: configuration.fontDesign.fontDesign
+                ))
+                .foregroundStyle(configuration.resolvedForegroundColor.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
@@ -33,7 +37,7 @@ public struct InitialsAvatarView: View {
         .overlay(
             ProfileAvatarClipShape(shape: configuration.shape)
                 .inset(by: configuration.borderWidth / 2)
-                .stroke(configuration.borderColor, lineWidth: configuration.borderWidth)
+                .stroke(configuration.borderColor.color, lineWidth: configuration.borderWidth)
         )
         .accessibilityLabel(identity.displayName.isEmpty ? identity.initials : identity.displayName)
     }
