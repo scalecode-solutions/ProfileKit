@@ -35,6 +35,38 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
     /// fall back to their capitalized identifier (e.g. "Mono", "Noir").
     public var effectDisplayNames: [ProfileImageEffect: LocalizedStringKey]
 
+    // MARK: - Initials editor strings (step 18)
+
+    public var initialsConfirmButton: LocalizedStringKey
+    public var initialsGlyphLabel: LocalizedStringKey
+    public var initialsGlyphPlaceholder: LocalizedStringKey
+    public var initialsGlyphFromNameLabel: LocalizedStringKey
+    public var initialsBackgroundHeading: LocalizedStringKey
+    public var initialsBackgroundSolid: LocalizedStringKey
+    public var initialsBackgroundLinear: LocalizedStringKey
+    public var initialsBackgroundRadial: LocalizedStringKey
+    public var initialsBackgroundAuto: LocalizedStringKey
+    public var initialsGradientAngleLabel: LocalizedStringKey
+    public var initialsGradientAddStopLabel: LocalizedStringKey
+    public var initialsGradientRemoveStopLabel: LocalizedStringKey
+    public var initialsPaletteLabel: LocalizedStringKey
+    public var initialsPaletteDisplayNames: [ProfileAvatarPaletteName: LocalizedStringKey]
+    public var initialsForegroundLabel: LocalizedStringKey
+    public var initialsTypographyHeading: LocalizedStringKey
+    public var initialsFontDesignLabel: LocalizedStringKey
+    public var initialsFontDesignDisplayNames: [ProfileFontDesign: LocalizedStringKey]
+    public var initialsFontWeightLabel: LocalizedStringKey
+    public var initialsFontWeightDisplayNames: [ProfileFontWeight: LocalizedStringKey]
+    public var initialsFontScaleLabel: LocalizedStringKey
+    public var initialsLetterSpacingLabel: LocalizedStringKey
+    public var initialsVerticalBiasLabel: LocalizedStringKey
+    public var initialsShadowHeading: LocalizedStringKey
+    public var initialsShadowAddLabel: LocalizedStringKey
+    public var initialsShadowRemoveLabel: LocalizedStringKey
+    public var initialsShadowOpacityLabel: LocalizedStringKey
+    public var initialsShadowRadiusLabel: LocalizedStringKey
+    public var initialsShadowOffsetYLabel: LocalizedStringKey
+
     public init(
         cancelButton: LocalizedStringKey = "Cancel",
         resetButton: LocalizedStringKey = "Reset",
@@ -50,7 +82,36 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
         previewHeading: LocalizedStringKey = "Preview",
         interactionInstructions: LocalizedStringKey = "Pinch to zoom, drag to reposition",
         effectsHeading: LocalizedStringKey = "Effects",
-        effectDisplayNames: [ProfileImageEffect: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultEffectDisplayNames()
+        effectDisplayNames: [ProfileImageEffect: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultEffectDisplayNames(),
+        initialsConfirmButton: LocalizedStringKey = "Use Avatar",
+        initialsGlyphLabel: LocalizedStringKey = "Initials",
+        initialsGlyphPlaceholder: LocalizedStringKey = "e.g. JD",
+        initialsGlyphFromNameLabel: LocalizedStringKey = "From name",
+        initialsBackgroundHeading: LocalizedStringKey = "Background",
+        initialsBackgroundSolid: LocalizedStringKey = "Solid",
+        initialsBackgroundLinear: LocalizedStringKey = "Linear",
+        initialsBackgroundRadial: LocalizedStringKey = "Radial",
+        initialsBackgroundAuto: LocalizedStringKey = "Auto",
+        initialsGradientAngleLabel: LocalizedStringKey = "Angle",
+        initialsGradientAddStopLabel: LocalizedStringKey = "Add third color",
+        initialsGradientRemoveStopLabel: LocalizedStringKey = "Remove third color",
+        initialsPaletteLabel: LocalizedStringKey = "Palette",
+        initialsPaletteDisplayNames: [ProfileAvatarPaletteName: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultPaletteDisplayNames(),
+        initialsForegroundLabel: LocalizedStringKey = "Foreground",
+        initialsTypographyHeading: LocalizedStringKey = "Typography",
+        initialsFontDesignLabel: LocalizedStringKey = "Design",
+        initialsFontDesignDisplayNames: [ProfileFontDesign: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultFontDesignDisplayNames(),
+        initialsFontWeightLabel: LocalizedStringKey = "Weight",
+        initialsFontWeightDisplayNames: [ProfileFontWeight: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultFontWeightDisplayNames(),
+        initialsFontScaleLabel: LocalizedStringKey = "Size",
+        initialsLetterSpacingLabel: LocalizedStringKey = "Tracking",
+        initialsVerticalBiasLabel: LocalizedStringKey = "Vertical nudge",
+        initialsShadowHeading: LocalizedStringKey = "Shadow",
+        initialsShadowAddLabel: LocalizedStringKey = "Add shadow",
+        initialsShadowRemoveLabel: LocalizedStringKey = "Remove shadow",
+        initialsShadowOpacityLabel: LocalizedStringKey = "Opacity",
+        initialsShadowRadiusLabel: LocalizedStringKey = "Blur",
+        initialsShadowOffsetYLabel: LocalizedStringKey = "Y offset"
     ) {
         self.cancelButton = cancelButton
         self.resetButton = resetButton
@@ -67,6 +128,35 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
         self.interactionInstructions = interactionInstructions
         self.effectsHeading = effectsHeading
         self.effectDisplayNames = effectDisplayNames
+        self.initialsConfirmButton = initialsConfirmButton
+        self.initialsGlyphLabel = initialsGlyphLabel
+        self.initialsGlyphPlaceholder = initialsGlyphPlaceholder
+        self.initialsGlyphFromNameLabel = initialsGlyphFromNameLabel
+        self.initialsBackgroundHeading = initialsBackgroundHeading
+        self.initialsBackgroundSolid = initialsBackgroundSolid
+        self.initialsBackgroundLinear = initialsBackgroundLinear
+        self.initialsBackgroundRadial = initialsBackgroundRadial
+        self.initialsBackgroundAuto = initialsBackgroundAuto
+        self.initialsGradientAngleLabel = initialsGradientAngleLabel
+        self.initialsGradientAddStopLabel = initialsGradientAddStopLabel
+        self.initialsGradientRemoveStopLabel = initialsGradientRemoveStopLabel
+        self.initialsPaletteLabel = initialsPaletteLabel
+        self.initialsPaletteDisplayNames = initialsPaletteDisplayNames
+        self.initialsForegroundLabel = initialsForegroundLabel
+        self.initialsTypographyHeading = initialsTypographyHeading
+        self.initialsFontDesignLabel = initialsFontDesignLabel
+        self.initialsFontDesignDisplayNames = initialsFontDesignDisplayNames
+        self.initialsFontWeightLabel = initialsFontWeightLabel
+        self.initialsFontWeightDisplayNames = initialsFontWeightDisplayNames
+        self.initialsFontScaleLabel = initialsFontScaleLabel
+        self.initialsLetterSpacingLabel = initialsLetterSpacingLabel
+        self.initialsVerticalBiasLabel = initialsVerticalBiasLabel
+        self.initialsShadowHeading = initialsShadowHeading
+        self.initialsShadowAddLabel = initialsShadowAddLabel
+        self.initialsShadowRemoveLabel = initialsShadowRemoveLabel
+        self.initialsShadowOpacityLabel = initialsShadowOpacityLabel
+        self.initialsShadowRadiusLabel = initialsShadowRadiusLabel
+        self.initialsShadowOffsetYLabel = initialsShadowOffsetYLabel
     }
 
     /// Resolves a display name for `effect`. Returns the host-provided
@@ -108,6 +198,40 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
             .process:                "Process",
             .transfer:               "Transfer",
             .comic:                  "Comic",
+        ]
+    }
+
+    public static func makeDefaultPaletteDisplayNames() -> [ProfileAvatarPaletteName: LocalizedStringKey] {
+        [
+            .automatic: "Automatic",
+            .mono:      "Mono",
+            .warm:      "Warm",
+            .cool:      "Cool",
+            .vibrant:   "Vibrant",
+            .pastel:    "Pastel",
+        ]
+    }
+
+    public static func makeDefaultFontDesignDisplayNames() -> [ProfileFontDesign: LocalizedStringKey] {
+        [
+            .default:     "Default",
+            .serif:       "Serif",
+            .rounded:     "Rounded",
+            .monospaced:  "Mono",
+        ]
+    }
+
+    public static func makeDefaultFontWeightDisplayNames() -> [ProfileFontWeight: LocalizedStringKey] {
+        [
+            .ultraLight: "Ultra Light",
+            .thin:       "Thin",
+            .light:      "Light",
+            .regular:    "Regular",
+            .medium:     "Medium",
+            .semibold:   "Semibold",
+            .bold:       "Bold",
+            .heavy:      "Heavy",
+            .black:      "Black",
         ]
     }
 
