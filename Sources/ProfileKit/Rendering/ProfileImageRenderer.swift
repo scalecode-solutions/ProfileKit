@@ -73,7 +73,7 @@ public enum ProfileImageRenderer {
             image: image,
             data: data,
             contentType: effectiveConfig.outputType,
-            editorState: editorState
+            origin: .photo(editorState)
         )
     }
 

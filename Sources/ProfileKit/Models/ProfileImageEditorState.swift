@@ -1,6 +1,6 @@
 import CoreGraphics
 
-public struct ProfileImageEditorState: Equatable, Sendable {
+public struct ProfileImageEditorState: Equatable, Hashable, Sendable, Codable {
     public var zoom: CGFloat
     public var offset: CGSize
     public var adjustments: ProfileImageAdjustmentState

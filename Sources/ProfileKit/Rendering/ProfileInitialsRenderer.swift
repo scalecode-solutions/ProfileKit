@@ -104,16 +104,11 @@ public enum ProfileInitialsRenderer {
         let platformImage = PlatformImageBridge.makeImage(from: cgImage)
         let data = try ProfileImageEncoding.encodedData(from: cgImage, configuration: renderConfiguration)
 
-        // editorState: .init() is transitional — step 22 rewires
-        // ProfileImageEditResult to carry a ProfileAvatarOrigin that
-        // captures either a photo's editor state or an initials style.
-        // Until then, a neutral editor state reads as "no photo edits
-        // were applied" which is accurate for the initials path.
         return ProfileImageEditResult(
             image: platformImage,
             data: data,
             contentType: renderConfiguration.outputType,
-            editorState: ProfileImageEditorState()
+            origin: .initials(identity: draft.identity, style: draft.style)
         )
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ProfileImageAdjustmentState: Equatable, Sendable {
+public struct ProfileImageAdjustmentState: Equatable, Hashable, Sendable, Codable {
     public var brightness: Double
     public var contrast: Double
     public var saturation: Double
