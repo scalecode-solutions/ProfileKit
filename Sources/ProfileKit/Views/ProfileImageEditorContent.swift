@@ -48,10 +48,22 @@ public struct ProfileImageEditorContent: View {
 
     public var body: some View {
         VStack(spacing: 20) {
-            GeometryReader { proxy in
-                editorCanvas(in: proxy.size)
+            // Canvas: either a fixed-dimension square (when the host
+            // opts into a `.compact` / `.regular` / `.expanded` /
+            // `.fixed(_:)` preset) or a fill-to-container 1:1 box.
+            // Sliders and other adjustment controls stay flexible-
+            // width in both cases — canvas sizing only affects the
+            // crop area, per the API contract.
+            if let fixedDimension = configuration.canvasSize.dimension {
+                editorCanvas(in: CGSize(width: fixedDimension, height: fixedDimension))
+                    .frame(width: fixedDimension, height: fixedDimension)
+                    .frame(maxWidth: .infinity)
+            } else {
+                GeometryReader { proxy in
+                    editorCanvas(in: proxy.size)
+                }
+                .aspectRatio(1, contentMode: .fit)
             }
-            .aspectRatio(1, contentMode: .fit)
 
             // Instruction text lives below the canvas rather than
             // overlaid inside it — keeps the photo unobscured and the

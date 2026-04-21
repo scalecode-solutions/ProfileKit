@@ -24,6 +24,12 @@ public struct ProfileImageEditorConfiguration: Sendable {
     /// with bespoke theming that want the editor to match rather than
     /// follow the OS.
     public var appearance: ProfileImageEditorAppearance
+    /// Crop canvas sizing. Defaults to `.fill` (grow to fit container,
+    /// pre-0.3.0 behavior). Use `.compact` / `.regular` / `.expanded`
+    /// or `.fixed(_:)` to pin the canvas to a specific point dimension
+    /// for inline embeds, split-view layouts, or sheet-detent hosts
+    /// where a full-screen canvas is inappropriate.
+    public var canvasSize: ProfileImageEditorCanvasSize
 
     public init(
         cropShape: ProfileAvatarShape = .circle,
@@ -39,7 +45,8 @@ public struct ProfileImageEditorConfiguration: Sendable {
         showsGridOverlay: Bool = true,
         renderConfiguration: ProfileImageRenderConfiguration = .profilePhoto,
         texts: ProfileImageEditorTexts = .default,
-        appearance: ProfileImageEditorAppearance = .system
+        appearance: ProfileImageEditorAppearance = .system,
+        canvasSize: ProfileImageEditorCanvasSize = .fill
     ) {
         self.cropShape = cropShape
         self.minimumZoom = minimumZoom
@@ -55,6 +62,7 @@ public struct ProfileImageEditorConfiguration: Sendable {
         self.renderConfiguration = renderConfiguration
         self.texts = texts
         self.appearance = appearance
+        self.canvasSize = canvasSize
     }
 
     public static let profilePhoto = Self()
