@@ -4,6 +4,12 @@ public struct ProfileImageAdjustmentState: Equatable, Sendable {
     public var brightness: Double
     public var contrast: Double
     public var saturation: Double
+    /// Photo effect preset applied before the brightness / contrast /
+    /// saturation controls at render time. `.none` leaves the image
+    /// untouched (default). Effects are baked into the committed
+    /// render — saved `ProfileImageEditResult.data` reflects the
+    /// selected preset with no additional work from callers.
+    public var effect: ProfileImageEffect
     /// User-controlled fine rotation in degrees. Combined with
     /// `quantizedRotationDegrees` at render time — this is the slider
     /// adjustment, the quantized value is the snap-to-90° button state.
@@ -22,6 +28,7 @@ public struct ProfileImageAdjustmentState: Equatable, Sendable {
         brightness: Double = 0,
         contrast: Double = 1,
         saturation: Double = 1,
+        effect: ProfileImageEffect = .none,
         rotationDegrees: Double = 0,
         quantizedRotationDegrees: Double = 0,
         flippedHorizontally: Bool = false
@@ -29,9 +36,17 @@ public struct ProfileImageAdjustmentState: Equatable, Sendable {
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
+        self.effect = effect
         self.rotationDegrees = rotationDegrees
         self.quantizedRotationDegrees = quantizedRotationDegrees
         self.flippedHorizontally = flippedHorizontally
+    }
+
+    /// True when the color-controls trio (brightness / contrast /
+    /// saturation) is at its identity values. Lets the renderer skip
+    /// the `CIColorControls` pass when only an effect is active.
+    var isColorControlsNeutral: Bool {
+        brightness == 0 && contrast == 1 && saturation == 1
     }
 
     /// Total rotation applied at render time — fine slider + quantized
