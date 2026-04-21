@@ -270,27 +270,40 @@ public enum ProfileImageRenderer {
         from cgImage: CGImage,
         adjustments: ProfileImageAdjustmentState
     ) throws -> CGImage {
-        guard adjustments != .neutral else {
+        // Short-circuit: if nothing touches the image (no effect, no
+        // color-control deltas), skip the CIImage round-trip entirely.
+        if adjustments.effect.isIdentity && adjustments.isColorControlsNeutral {
             return cgImage
         }
 
-        let input = CIImage(cgImage: cgImage)
-        guard let filter = CIFilter(name: "CIColorControls") else {
-            throw ProfileImageRenderingError.adjustedImageCreationFailed
+        // 1) Effect first. Applying the film-look preset before
+        // brightness/contrast/saturation means the user's fine-tune
+        // adjustments read as "noir, a bit brighter" rather than
+        // "brighten, then noir" (which would crush highlights the
+        // preset was trying to preserve).
+        var ciImage = CIImage(cgImage: cgImage)
+        ciImage = EffectsPipeline.apply(adjustments.effect, to: ciImage)
+
+        // 2) Color controls, skipped when neutral so the effect-only
+        // case doesn't pay for an unnecessary pass.
+        if !adjustments.isColorControlsNeutral {
+            guard let filter = CIFilter(name: "CIColorControls") else {
+                throw ProfileImageRenderingError.adjustedImageCreationFailed
+            }
+            filter.setValue(ciImage, forKey: kCIInputImageKey)
+            filter.setValue(adjustments.brightness, forKey: kCIInputBrightnessKey)
+            filter.setValue(adjustments.contrast, forKey: kCIInputContrastKey)
+            filter.setValue(adjustments.saturation, forKey: kCIInputSaturationKey)
+
+            guard let output = filter.outputImage else {
+                throw ProfileImageRenderingError.adjustedImageCreationFailed
+            }
+            ciImage = output
         }
 
-        filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(adjustments.brightness, forKey: kCIInputBrightnessKey)
-        filter.setValue(adjustments.contrast, forKey: kCIInputContrastKey)
-        filter.setValue(adjustments.saturation, forKey: kCIInputSaturationKey)
-
-        guard
-            let output = filter.outputImage,
-            let rendered = ciContext.createCGImage(output, from: output.extent)
-        else {
+        guard let rendered = ciContext.createCGImage(ciImage, from: ciImage.extent) else {
             throw ProfileImageRenderingError.adjustedImageCreationFailed
         }
-
         return rendered
     }
 }

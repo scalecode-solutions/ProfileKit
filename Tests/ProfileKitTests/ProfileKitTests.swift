@@ -72,4 +72,28 @@ struct ProfileKitTests {
         #expect(!result.data.isEmpty)
         #expect(result.contentType == .jpeg)
     }
+
+    @Test func rendererBakesEffectIntoOutput() throws {
+        // Proves the end-to-end effect pipeline: adjustment state
+        // carries .noir, renderer applies EffectsPipeline, and the
+        // exported bytes differ from an otherwise-identical render
+        // with .none.
+        let cgImage = TestImageFactory.makeCGImage(width: 40, height: 40)
+
+        let neutral = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: .init(),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        let noir = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: ProfileImageEditorState(
+                adjustments: ProfileImageAdjustmentState(effect: .noir)
+            ),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        #expect(noir.data != neutral.data)
+    }
 }
