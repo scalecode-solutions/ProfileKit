@@ -6,8 +6,13 @@ public struct ProfileKitDemoView: View {
         identity: ProfileIdentity(displayName: "Taylor Example")
     )
     @State private var latestResult: ProfileImageEditResult?
+    @State private var latestInitialsResult: ProfileImageEditResult?
+    @State private var initialsDraft = ProfileImageWorkflow.makeInitialsDraft(
+        identity: ProfileIdentity(displayName: "Taylor Example")
+    )
     @State private var showingLandscape = false
     @State private var exportError: String?
+    @State private var initialsExportError: String?
 
     // Live-configurable knobs so the demo exercises every tier-1/tier-2
     // feature without requiring code edits.
@@ -31,6 +36,8 @@ public struct ProfileKitDemoView: View {
                     previewColumn
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                initialsColumn
             }
             .padding(24)
         }
@@ -191,6 +198,72 @@ public struct ProfileKitDemoView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    /// Full designed-initials editor column. Demonstrates that the
+    /// initials path produces the same ProfileImageEditResult shape as
+    /// the photo path — the committed image sits alongside the photo
+    /// result with identical handling.
+    private var initialsColumn: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Initials Editor")
+                .font(.title3.weight(.semibold))
+
+            Text("Design a monogram, commit for a renderable image file — same output contract as the photo path.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: 24) {
+                ProfileInitialsEditorScreen(
+                    draft: initialsDraft,
+                    configuration: editorConfiguration,
+                    onCancel: {},
+                    onCommit: handleInitialsCommit
+                )
+                .frame(maxWidth: 560)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(.thinMaterial)
+                )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Committed initials")
+                        .font(.headline)
+
+                    if let latestInitialsResult {
+                        Image(platformImage: latestInitialsResult.image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 160, height: 160)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+                        Text("Exported \(latestInitialsResult.data.count) bytes · \(latestInitialsResult.contentType.preferredFilenameExtension?.uppercased() ?? "?")")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Tap \"Use Avatar\" to export.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let initialsExportError {
+                        Text(initialsExportError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+    }
+
+    private func handleInitialsCommit(_ result: Result<ProfileImageEditResult, Error>) {
+        switch result {
+        case .success(let value):
+            latestInitialsResult = value
+            initialsExportError = nil
+        case .failure(let error):
+            initialsExportError = error.localizedDescription
+        }
     }
 
     private func handleCommit(_ result: Result<ProfileImageEditResult, Error>) {
