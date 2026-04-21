@@ -34,18 +34,28 @@ public struct ProfileImageEditorView: View {
     }
 
     public var body: some View {
-        // Chrome (header / text / toolbar / preview / adjustments)
-        // gets the 24pt horizontal inset; the canvas itself goes
-        // edge-to-edge so the gesture surface is as large as possible
-        // on small screens. Vertical padding stays global.
-        VStack(spacing: 20) {
-            header
-                .padding(.horizontal, 24)
+        // ScrollView wrap: without it, the canvas's .aspectRatio(1,.fit)
+        // sizes to whichever of width/height the VStack proposes as
+        // smaller — and on a phone with a full adjustments stack below,
+        // that's height. Result: canvas stays far narrower than the
+        // screen. Inside a ScrollView the canvas sees unbounded height,
+        // so the aspect ratio resolves against width and the canvas
+        // fills the screen width. Anything below that overflows scrolls
+        // naturally, which matches standard photo-editor behavior.
+        //
+        // Chrome (header / text / toolbar / preview / adjustments) gets
+        // the 24pt horizontal inset; the canvas itself goes edge-to-edge
+        // so the gesture surface is as large as possible. Vertical
+        // padding stays global.
+        ScrollView {
+            VStack(spacing: 20) {
+                header
+                    .padding(.horizontal, 24)
 
-            GeometryReader { proxy in
-                editorCanvas(in: proxy.size)
-            }
-            .aspectRatio(1, contentMode: .fit)
+                GeometryReader { proxy in
+                    editorCanvas(in: proxy.size)
+                }
+                .aspectRatio(1, contentMode: .fit)
 
             // Instruction text lives below the canvas rather than
             // overlaid inside it — keeps the photo unobscured and the
@@ -70,15 +80,16 @@ public struct ProfileImageEditorView: View {
                     .padding(.horizontal, 24)
             }
 
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                }
             }
+            .padding(.vertical, 24)
         }
-        .padding(.vertical, 24)
         .background(.background)
         .preferredColorScheme(configuration.appearance.preferredColorScheme)
         .onAppear {
