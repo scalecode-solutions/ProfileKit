@@ -77,6 +77,43 @@ struct ProfileKitTests {
         #expect(draft.style == .default)
     }
 
+    @Test func workflowReopensPhotoResult() throws {
+        let cgImage = TestImageFactory.makeCGImage(width: 40, height: 40)
+        let committed = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: ProfileImageEditorState(zoom: 1.3),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        let reopened = ProfileImageWorkflow.reopen(committed)
+        guard case .photo(let draft) = reopened else {
+            Issue.record("Expected photo reopen")
+            return
+        }
+        #expect(draft.editorState.zoom == 1.3)
+    }
+
+    @Test func workflowReopensInitialsResult() throws {
+        let initialsDraft = ProfileImageWorkflow.makeInitialsDraft(
+            identity: ProfileIdentity(displayName: "Jamie Doe"),
+            style: ProfileInitialsStyle(glyph: "JD")
+        )
+        let committed = try ProfileImageWorkflow.export(
+            initialsDraft: initialsDraft,
+            configuration: .init(
+                renderConfiguration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+            )
+        )
+
+        let reopened = ProfileImageWorkflow.reopen(committed)
+        guard case .initials(let draft) = reopened else {
+            Issue.record("Expected initials reopen")
+            return
+        }
+        #expect(draft.identity.displayName == "Jamie Doe")
+        #expect(draft.style.glyph == "JD")
+    }
+
     @Test func workflowExportsInitialsDraft() throws {
         let identity = ProfileIdentity(displayName: "Jamie Doe")
         let draft = ProfileImageWorkflow.makeInitialsDraft(identity: identity)

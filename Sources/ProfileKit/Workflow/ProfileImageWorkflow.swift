@@ -82,6 +82,41 @@ public enum ProfileImageWorkflow {
             configuration: configuration
         )
     }
+
+    // MARK: - Round-trip
+
+    /// Reconstructs an editable draft from a previously committed
+    /// result. Lets hosts persist only the `ProfileImageEditResult` —
+    /// the rendered image plus the origin captures everything needed
+    /// to drop the user back into the same editor with the same state.
+    ///
+    /// - For `.photo` origins, builds a `ProfileImageDraft` around the
+    ///   committed image with the captured editor state re-applied.
+    ///   The image is the RENDERED avatar, not the pre-render source
+    ///   — semantically "continue refining this photo." Hosts that
+    ///   need the original source preserve it alongside the result.
+    /// - For `.initials` origins, returns the full identity + style.
+    public enum Reopened {
+        case photo(ProfileImageDraft)
+        case initials(ProfileInitialsDraft)
+    }
+
+    public static func reopen(_ result: ProfileImageEditResult) -> Reopened {
+        switch result.origin {
+        case .photo(let state):
+            let pixelSize = PlatformImageBridge.pixelSize(for: result.image)
+            let draft = ProfileImageDraft(
+                image: result.image,
+                pixelSize: pixelSize,
+                contentType: result.contentType,
+                editorState: state
+            )
+            return .photo(draft)
+
+        case .initials(let identity, let style):
+            return .initials(ProfileInitialsDraft(identity: identity, style: style))
+        }
+    }
 }
 
 // PhotosPickerItem integration moved to
