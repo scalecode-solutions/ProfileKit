@@ -23,8 +23,8 @@ public struct InitialsAvatarView: View {
             )
 
             Text(identity.initials)
-                .font(.system(size: configuration.size * 0.38, weight: .semibold, design: .rounded))
-                .foregroundStyle(configuration.foregroundColor)
+                .font(.system(size: configuration.size * 0.38, weight: configuration.fontWeight, design: .rounded))
+                .foregroundStyle(configuration.resolvedForegroundColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
