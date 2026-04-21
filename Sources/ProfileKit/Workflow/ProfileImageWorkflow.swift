@@ -1,9 +1,5 @@
 import Foundation
 
-#if canImport(UIKit) && canImport(PhotosUI)
-import PhotosUI
-#endif
-
 public enum ProfileImageWorkflowError: LocalizedError {
     case missingTransferableData
 
@@ -53,19 +49,7 @@ public enum ProfileImageWorkflow {
     }
 }
 
-#if canImport(UIKit) && canImport(PhotosUI)
-@available(iOS 16.0, macOS 13.0, *)
-public extension ProfileImageWorkflow {
-    static func makeDraft(
-        from item: PhotosPickerItem,
-        identity: ProfileIdentity? = nil,
-        configuration: ProfileImageEditorConfiguration = .profilePhoto
-    ) async throws -> ProfileImageDraft {
-        guard let data = try await item.loadTransferable(type: Data.self) else {
-            throw ProfileImageWorkflowError.missingTransferableData
-        }
-
-        return try makeDraft(from: .data(data), identity: identity, configuration: configuration)
-    }
-}
-#endif
+// PhotosPickerItem integration moved to
+// ProfileImageWorkflow+PhotosPicker.swift so the PhotosUI import lives
+// in its own file — earlier compound canImport guards in-line here
+// were evaluating inconsistently in Xcode's downstream SPM builds.
