@@ -41,10 +41,20 @@ struct ProfileImageViewport {
         min(max(editorState.zoom, configuration.minimumZoom), configuration.maximumZoom)
     }
 
+    /// Rotation applied at render time. Combines the fine slider
+    /// (`rotationDegrees`) with any 90° button presses
+    /// (`quantizedRotationDegrees`). When rotation isn't allowed by
+    /// configuration, only the quantized state is honored — the slider
+    /// is hidden in that mode, but the buttons are the kind of coarse
+    /// action a user expects to always work.
     var rotationRadians: CGFloat {
-        configuration.allowsRotation
-            ? (CGFloat(editorState.adjustments.rotationDegrees) * .pi / 180)
-            : 0
+        let degrees: Double
+        if configuration.allowsRotation {
+            degrees = editorState.adjustments.effectiveRotationDegrees
+        } else {
+            degrees = editorState.adjustments.quantizedRotationDegrees
+        }
+        return CGFloat(degrees) * .pi / 180
     }
 
     var rotatedBoundingSize: CGSize {

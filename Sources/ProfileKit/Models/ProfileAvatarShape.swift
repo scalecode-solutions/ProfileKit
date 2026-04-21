@@ -1,6 +1,6 @@
 import CoreGraphics
 
-public enum ProfileAvatarShape: Sendable {
+public enum ProfileAvatarShape: Sendable, Equatable {
     case circle
     case roundedRect(cornerRadius: CGFloat)
 }
