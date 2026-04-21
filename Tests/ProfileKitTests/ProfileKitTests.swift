@@ -54,13 +54,9 @@ struct ProfileKitTests {
 
     @Test func workflowBuildsDraftWithRecommendedState() throws {
         let data = try TestImageFactory.makePNGData(width: 300, height: 500)
-        let draft = try ProfileImageWorkflow.makeDraft(
-            from: .data(data),
-            identity: ProfileIdentity(displayName: "Jamie Doe")
-        )
+        let draft = try ProfileImageWorkflow.makeDraft(from: .data(data))
 
         #expect(draft.contentType == .png)
-        #expect(draft.identity?.initials == "JD")
         #expect(draft.editorState.zoom >= ProfileImageEditorConfiguration.profilePhoto.minimumZoom)
     }
 

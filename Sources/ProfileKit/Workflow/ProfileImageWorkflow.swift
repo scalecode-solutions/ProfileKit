@@ -14,7 +14,6 @@ public enum ProfileImageWorkflowError: LocalizedError {
 public enum ProfileImageWorkflow {
     public static func makeDraft(
         from source: ProfileImageSource,
-        identity: ProfileIdentity? = nil,
         configuration: ProfileImageEditorConfiguration = .profilePhoto
     ) throws -> ProfileImageDraft {
         let decoded = try ProfileImageDecoder.decode(source)
@@ -30,7 +29,6 @@ public enum ProfileImageWorkflow {
             image: image,
             pixelSize: decoded.pixelSize,
             contentType: decoded.contentType,
-            identity: identity,
             editorState: viewport.recommendedInitialState()
         )
     }

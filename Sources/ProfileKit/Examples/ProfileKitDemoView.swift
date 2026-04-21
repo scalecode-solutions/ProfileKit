@@ -2,8 +2,7 @@ import SwiftUI
 
 public struct ProfileKitDemoView: View {
     @State private var draft: ProfileImageDraft = try! ProfileImageWorkflow.makeDraft(
-        from: .image(ProfileKitDemoSamples.portraitSample()),
-        identity: ProfileIdentity(displayName: "Taylor Example")
+        from: .image(ProfileKitDemoSamples.portraitSample())
     )
     @State private var latestResult: ProfileImageEditResult?
     @State private var latestInitialsResult: ProfileImageEditResult?
@@ -116,7 +115,7 @@ public struct ProfileKitDemoView: View {
     /// enum has a stable `.initials` fallback source when no photo has
     /// been committed yet.
     private var previewIdentity: ProfileIdentity {
-        draft.identity ?? ProfileIdentity(displayName: "Taylor Example")
+        ProfileIdentity(displayName: "Taylor Example")
     }
 
     /// Content for the preview tiles — a photo if the user has
@@ -294,8 +293,7 @@ public struct ProfileKitDemoView: View {
         let image = showingLandscape ? ProfileKitDemoSamples.landscapeSample() : ProfileKitDemoSamples.portraitSample()
         do {
             draft = try ProfileImageWorkflow.makeDraft(
-                from: .image(image),
-                identity: ProfileIdentity(displayName: "Taylor Example")
+                from: .image(image)
             )
             latestResult = nil
             exportError = nil
