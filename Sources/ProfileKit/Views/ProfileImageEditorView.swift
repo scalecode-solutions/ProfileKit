@@ -61,18 +61,18 @@ public struct ProfileImageEditorView: View {
 
     private var header: some View {
         HStack {
-            Button("Cancel", action: onCancel)
+            Button(configuration.texts.cancelButton, action: onCancel)
 
             Spacer()
 
-            Button("Reset") {
+            Button(configuration.texts.resetButton) {
                 errorMessage = nil
                 editorState.reset()
                 didApplyRecommendedInitialState = false
                 applyRecommendedInitialStateIfNeeded(force: true)
             }
 
-            Button("Use Photo") {
+            Button(configuration.texts.confirmButton) {
                 commitEdits()
             }
             .buttonStyle(.borderedProminent)
@@ -100,7 +100,7 @@ public struct ProfileImageEditorView: View {
 
             VStack {
                 Spacer()
-                Text("Pinch to zoom, drag to reposition")
+                Text(configuration.texts.interactionInstructions)
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.75))
                     .padding(.bottom, 16)
@@ -128,7 +128,7 @@ public struct ProfileImageEditorView: View {
 
     private var previewRow: some View {
         HStack(spacing: 16) {
-            Text("Preview")
+            Text(configuration.texts.previewHeading)
                 .font(.headline)
 
             Spacer()
@@ -145,20 +145,20 @@ public struct ProfileImageEditorView: View {
 
     private var adjustmentControls: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Adjustments")
+            Text(configuration.texts.adjustmentsHeading)
                 .font(.headline)
 
-            sliderRow(title: "Brightness", value: $editorState.adjustments.brightness, range: -0.4...0.4)
-            sliderRow(title: "Contrast", value: $editorState.adjustments.contrast, range: 0.7...1.6)
-            sliderRow(title: "Saturation", value: $editorState.adjustments.saturation, range: 0...1.8)
+            sliderRow(title: configuration.texts.brightnessLabel, value: $editorState.adjustments.brightness, range: -0.4...0.4)
+            sliderRow(title: configuration.texts.contrastLabel, value: $editorState.adjustments.contrast, range: 0.7...1.6)
+            sliderRow(title: configuration.texts.saturationLabel, value: $editorState.adjustments.saturation, range: 0...1.8)
             if configuration.allowsRotation {
-                sliderRow(title: "Rotation", value: $editorState.adjustments.rotationDegrees, range: -45...45)
+                sliderRow(title: configuration.texts.rotationLabel, value: $editorState.adjustments.rotationDegrees, range: -45...45)
             }
         }
     }
 
     private func sliderRow(
-        title: String,
+        title: LocalizedStringKey,
         value: Binding<Double>,
         range: ClosedRange<Double>
     ) -> some View {

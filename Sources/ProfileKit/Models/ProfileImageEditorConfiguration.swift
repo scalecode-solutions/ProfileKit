@@ -11,7 +11,14 @@ public struct ProfileImageEditorConfiguration: Sendable {
     public var doubleTapZoomFactor: CGFloat
     public var showsLivePreview: Bool
     public var showsAdjustmentControls: Bool
+    /// Whether the rule-of-thirds grid overlay is drawn over the crop
+    /// canvas during editing. Helps the user frame the subject. The
+    /// grid never appears in the exported image.
+    public var showsGridOverlay: Bool
     public var renderConfiguration: ProfileImageRenderConfiguration
+    /// All user-visible strings in the editor. Swap in localized
+    /// versions or custom voice here; defaults ship in English.
+    public var texts: ProfileImageEditorTexts
 
     public init(
         cropShape: ProfileAvatarShape = .circle,
@@ -24,7 +31,9 @@ public struct ProfileImageEditorConfiguration: Sendable {
         doubleTapZoomFactor: CGFloat = 2,
         showsLivePreview: Bool = true,
         showsAdjustmentControls: Bool = true,
-        renderConfiguration: ProfileImageRenderConfiguration = .profilePhoto
+        showsGridOverlay: Bool = true,
+        renderConfiguration: ProfileImageRenderConfiguration = .profilePhoto,
+        texts: ProfileImageEditorTexts = .default
     ) {
         self.cropShape = cropShape
         self.minimumZoom = minimumZoom
@@ -36,7 +45,9 @@ public struct ProfileImageEditorConfiguration: Sendable {
         self.doubleTapZoomFactor = doubleTapZoomFactor
         self.showsLivePreview = showsLivePreview
         self.showsAdjustmentControls = showsAdjustmentControls
+        self.showsGridOverlay = showsGridOverlay
         self.renderConfiguration = renderConfiguration
+        self.texts = texts
     }
 
     public static let profilePhoto = Self()
