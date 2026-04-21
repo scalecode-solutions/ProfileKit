@@ -24,6 +24,28 @@ public enum ProfileImageRenderingError: LocalizedError {
 public enum ProfileImageRenderer {
     private static let ciContext = CIContext(options: nil)
 
+    /// Async rendering path — offloads the CGContext draw + CoreImage
+    /// filter + encoding to a detached cooperative task so a large
+    /// source image doesn't stall the main thread when the user hits
+    /// "Use Photo." The synchronous `renderEditResult` remains for
+    /// callers that are already off-main or want immediate control;
+    /// the SwiftUI editor uses this async variant via commitEdits.
+    public static func renderEditResultAsync(
+        from source: ProfileImageSource,
+        editorState: ProfileImageEditorState,
+        editorConfiguration: ProfileImageEditorConfiguration = .profilePhoto,
+        configuration: ProfileImageRenderConfiguration = .profilePhoto
+    ) async throws -> ProfileImageEditResult {
+        try await Task.detached(priority: .userInitiated) {
+            try renderEditResult(
+                from: source,
+                editorState: editorState,
+                editorConfiguration: editorConfiguration,
+                configuration: configuration
+            )
+        }.value
+    }
+
     public static func renderEditResult(
         from source: ProfileImageSource,
         editorState: ProfileImageEditorState,

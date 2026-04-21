@@ -13,6 +13,11 @@ public struct ProfileImageEditorView: View {
     @State private var zoomStart: CGFloat = 1
     @State private var isZooming = false
     @State private var didApplyRecommendedInitialState = false
+    /// True while the async render is in-flight. Disables the confirm
+    /// button and shows a progress indicator so the user knows their
+    /// tap was received — large source images can take a few hundred
+    /// ms to encode even on the background thread.
+    @State private var isExporting = false
 
     public init(
         sourceImage: PKPlatformImage,
@@ -114,10 +119,17 @@ public struct ProfileImageEditorView: View {
                 applyRecommendedInitialStateIfNeeded(force: true)
             }
 
-            Button(configuration.texts.confirmButton) {
+            Button {
                 commitEdits()
+            } label: {
+                if isExporting {
+                    ProgressView()
+                } else {
+                    Text(configuration.texts.confirmButton)
+                }
             }
             .buttonStyle(.borderedProminent)
+            .disabled(isExporting)
         }
     }
 
@@ -329,18 +341,30 @@ public struct ProfileImageEditorView: View {
     }
 
     private func commitEdits() {
-        do {
-            errorMessage = nil
-            let result = try ProfileImageRenderer.renderEditResult(
-                from: .image(sourceImage),
-                editorState: editorState,
-                editorConfiguration: configuration,
-                configuration: configuration.renderConfiguration
-            )
-            onCommit(.success(result))
-        } catch {
-            errorMessage = error.localizedDescription
-            onCommit(.failure(error))
+        errorMessage = nil
+        isExporting = true
+
+        // Snapshot the state on the main actor so the async call
+        // doesn't reach back into MainActor-isolated editor state
+        // while the detached render is running.
+        let snapshotState = editorState
+        let snapshotConfig = configuration
+        let snapshotSource = sourceImage
+
+        Task { @MainActor in
+            defer { isExporting = false }
+            do {
+                let result = try await ProfileImageRenderer.renderEditResultAsync(
+                    from: .image(snapshotSource),
+                    editorState: snapshotState,
+                    editorConfiguration: snapshotConfig,
+                    configuration: snapshotConfig.renderConfiguration
+                )
+                onCommit(.success(result))
+            } catch {
+                errorMessage = error.localizedDescription
+                onCommit(.failure(error))
+            }
         }
     }
 }
