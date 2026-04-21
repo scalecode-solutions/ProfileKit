@@ -51,71 +51,73 @@ public struct ProfileImageEditorView: View {
         // top VStack only needs to fit header + canvas + instructions
         // + toolbar, so the canvas's .aspectRatio(1,.fit) now has
         // enough vertical budget to resolve against the full width.
-        // Top inset uses SwiftUI's built-in safe-area tracking: the
-        // editor is typically presented via `.fullScreenCover`, which
-        // hands its content the full window rect. Without this, the
-        // header buttons end up riding behind the status bar / Dynamic
-        // Island on notched devices. `.safeAreaPadding(.top, 24)` adds
-        // 24pt of breathing room ABOVE the system inset; a plain
-        // `.padding(.top, 24)` would get swallowed by
-        // `.background(…, ignoresSafeAreaEdges: .all)` below.
-        VStack(spacing: 20) {
-            header
-                .padding(.horizontal, 24)
+        // GeometryReader + `.ignoresSafeArea()` wrapper: read the hardware
+        // safe-area insets explicitly and apply them as padding. This
+        // pattern is load-bearing — `.fullScreenCover` presents content
+        // into a container that, in iOS 26, doesn't auto-inset a plain
+        // VStack's children. `.safeAreaPadding(.top, 24)` inflates the
+        // safe-area VALUE descendants can read but it doesn't physically
+        // push a VStack's children, so the header was still riding under
+        // the Dynamic Island / clock. Reading `proxy.safeAreaInsets`
+        // sidesteps all of that.
+        GeometryReader { proxy in
+            VStack(spacing: 20) {
+                header
+                    .padding(.horizontal, 24)
 
-            GeometryReader { proxy in
-                editorCanvas(in: proxy.size)
-            }
-            .aspectRatio(1, contentMode: .fit)
-
-            // Instruction text lives below the canvas rather than
-            // overlaid inside it — keeps the photo unobscured and the
-            // guidance readable regardless of crop content.
-            Text(configuration.texts.interactionInstructions)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-
-            transformToolbar
-                .padding(.horizontal, 24)
-
-            ScrollView {
-                VStack(spacing: 20) {
-                    if configuration.showsLivePreview {
-                        previewRow
-                            .padding(.horizontal, 24)
-                    }
-
-                    if configuration.showsAdjustmentControls {
-                        adjustmentControls
-                            .padding(.horizontal, 24)
-                    }
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 24)
-                    }
+                GeometryReader { canvasProxy in
+                    editorCanvas(in: canvasProxy.size)
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 24)
+                .aspectRatio(1, contentMode: .fit)
+
+                // Instruction text lives below the canvas rather than
+                // overlaid inside it — keeps the photo unobscured and
+                // the guidance readable regardless of crop content.
+                Text(configuration.texts.interactionInstructions)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+
+                transformToolbar
+                    .padding(.horizontal, 24)
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        if configuration.showsLivePreview {
+                            previewRow
+                                .padding(.horizontal, 24)
+                        }
+
+                        if configuration.showsAdjustmentControls {
+                            adjustmentControls
+                                .padding(.horizontal, 24)
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 24)
+                        }
+                    }
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
+                }
             }
+            .padding(.top, proxy.safeAreaInsets.top + 24)
+            .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
+            .padding(.leading, proxy.safeAreaInsets.leading)
+            .padding(.trailing, proxy.safeAreaInsets.trailing)
+            .frame(
+                width: proxy.size.width + proxy.safeAreaInsets.leading + proxy.safeAreaInsets.trailing,
+                height: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+            )
+            .background(.background)
         }
-        .safeAreaPadding(.top, 24)
-        .safeAreaPadding(.bottom, 8)
-        // Background extends edge-to-edge via `.ignoresSafeArea()` so
-        // the status-bar / home-indicator regions share the editor's
-        // fill color, while the content (`VStack` above) stays pinned
-        // inside the safe area.
-        .background {
-            Rectangle()
-                .fill(.background)
-                .ignoresSafeArea()
-        }
+        .ignoresSafeArea()
         .preferredColorScheme(configuration.appearance.preferredColorScheme)
         .onAppear {
             applyRecommendedInitialStateIfNeeded()
