@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## 0.8.0
 
 Initials as a first-class avatar source, photo effects gallery, and a
 unified editor surface. Major feature release with a curated set of
