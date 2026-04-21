@@ -42,6 +42,15 @@ public struct ProfileImageEditorView: View {
             }
             .aspectRatio(1, contentMode: .fit)
 
+            // Instruction text lives below the canvas rather than
+            // overlaid inside it — keeps the photo unobscured and the
+            // guidance readable regardless of crop content.
+            Text(configuration.texts.interactionInstructions)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+
             transformToolbar
 
             if configuration.showsLivePreview {
@@ -72,9 +81,11 @@ public struct ProfileImageEditorView: View {
     /// Apple Photos-style "this is obviously broken, fix the
     /// orientation" affordances that users reach for first.
     private var transformToolbar: some View {
-        // Circular glass buttons for the coarse transform actions. The
-        // flipped state uses glassProminent so the user can see at a
-        // glance that horizontal flip is engaged.
+        // Circular glass buttons for the coarse transform actions.
+        // Centered in the row rather than pushed left — visually reads
+        // as a balanced cluster rather than a left-aligned toolbar.
+        // The flipped state uses glassProminent so the user can see at
+        // a glance that horizontal flip is engaged.
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
                 Button {
@@ -132,10 +143,9 @@ public struct ProfileImageEditorView: View {
                     .buttonBorderShape(.circle)
                     .accessibilityLabel(configuration.texts.flipHorizontalLabel)
                 }
-
-                Spacer()
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
@@ -204,14 +214,6 @@ public struct ProfileImageEditorView: View {
                 .gesture(dragGesture(cropSize: cropSize))
                 .simultaneousGesture(magnificationGesture(cropSize: cropSize))
                 .simultaneousGesture(doubleTapGesture(cropSize: cropSize))
-
-            VStack {
-                Spacer()
-                Text(configuration.texts.interactionInstructions)
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.75))
-                    .padding(.bottom, 16)
-            }
         }
         .onAppear {
             applyRecommendedInitialStateIfNeeded(availableSize: size)

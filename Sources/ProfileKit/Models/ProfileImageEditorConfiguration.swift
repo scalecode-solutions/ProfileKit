@@ -29,7 +29,7 @@ public struct ProfileImageEditorConfiguration: Sendable {
         cropShape: ProfileAvatarShape = .circle,
         minimumZoom: CGFloat = 1,
         maximumZoom: CGFloat = 4,
-        cropPadding: CGFloat = 24,
+        cropPadding: CGFloat = 0,
         initialZoom: CGFloat = 1.05,
         initialVerticalBias: CGFloat = -0.08,
         allowsRotation: Bool = true,
