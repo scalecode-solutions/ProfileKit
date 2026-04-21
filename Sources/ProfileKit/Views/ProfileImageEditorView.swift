@@ -34,8 +34,13 @@ public struct ProfileImageEditorView: View {
     }
 
     public var body: some View {
+        // Chrome (header / text / toolbar / preview / adjustments)
+        // gets the 24pt horizontal inset; the canvas itself goes
+        // edge-to-edge so the gesture surface is as large as possible
+        // on small screens. Vertical padding stays global.
         VStack(spacing: 20) {
             header
+                .padding(.horizontal, 24)
 
             GeometryReader { proxy in
                 editorCanvas(in: proxy.size)
@@ -50,15 +55,19 @@ public struct ProfileImageEditorView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
 
             transformToolbar
+                .padding(.horizontal, 24)
 
             if configuration.showsLivePreview {
                 previewRow
+                    .padding(.horizontal, 24)
             }
 
             if configuration.showsAdjustmentControls {
                 adjustmentControls
+                    .padding(.horizontal, 24)
             }
 
             if let errorMessage {
@@ -66,9 +75,10 @@ public struct ProfileImageEditorView: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
             }
         }
-        .padding(24)
+        .padding(.vertical, 24)
         .background(.background)
         .preferredColorScheme(configuration.appearance.preferredColorScheme)
         .onAppear {
