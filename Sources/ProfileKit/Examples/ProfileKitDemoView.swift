@@ -12,6 +12,7 @@ public struct ProfileKitDemoView: View {
     // Live-configurable knobs so the demo exercises every tier-1/tier-2
     // feature without requiring code edits.
     @State private var showsGridOverlay = true
+    @State private var showsEffects = true
     @State private var appearance: ProfileImageEditorAppearance = .system
     @State private var exportCircular = false
     @State private var initialsFontWeight: DemoFontWeight = .semibold
@@ -68,6 +69,8 @@ public struct ProfileKitDemoView: View {
 
             Toggle("Rule-of-thirds grid during crop", isOn: $showsGridOverlay)
 
+            Toggle("Effects film strip", isOn: $showsEffects)
+
             Picker("Appearance", selection: $appearance) {
                 Text("System").tag(ProfileImageEditorAppearance.system)
                 Text("Force Light").tag(ProfileImageEditorAppearance.forceLight)
@@ -94,6 +97,7 @@ public struct ProfileKitDemoView: View {
     private var editorConfiguration: ProfileImageEditorConfiguration {
         ProfileImageEditorConfiguration(
             showsGridOverlay: showsGridOverlay,
+            showsEffects: showsEffects,
             renderConfiguration: ProfileImageRenderConfiguration(
                 cropImageCircular: exportCircular
             ),
