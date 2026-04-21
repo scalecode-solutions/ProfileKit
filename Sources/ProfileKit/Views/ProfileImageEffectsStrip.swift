@@ -36,8 +36,15 @@ struct ProfileImageEffectsStrip: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                ForEach(catalog, id: \.identifier) { entry in
-                    tile(for: entry)
+                // Index-keyed ForEach because the cache's `identifier`
+                // deliberately collapses parameterized variants (two
+                // `.sepia` intensities share a rendered preview). If a
+                // host catalog contains duplicate identifiers, keying
+                // by identifier would produce duplicate SwiftUI IDs.
+                // Indices are always unique; the thumbnail cache still
+                // keys by identifier under the hood.
+                ForEach(catalog.indices, id: \.self) { index in
+                    tile(for: catalog[index])
                 }
             }
             .padding(.horizontal, 24)
@@ -103,8 +110,11 @@ struct ProfileImageEffectsStrip: View {
             thumbnailSourceID = currentID
         }
 
-        // Downsample once, reuse across all effects.
-        guard let base = await makeThumbnailCIImage(from: sourceImage) else {
+        // Downsample once to a CGImage (Sendable-clean), reuse across
+        // all effects. CGImage round-trips easily through detached
+        // tasks; CIImage isn't formally Sendable so we reconstruct it
+        // inside each detached per-effect task instead.
+        guard let baseCGImage = await makeThumbnailCGImage(from: sourceImage) else {
             return
         }
 
@@ -118,23 +128,41 @@ struct ProfileImageEffectsStrip: View {
             guard !rendered.contains(entry.identifier) else { continue }
             rendered.insert(entry.identifier)
 
-            let filtered = EffectsPipeline.apply(entry, to: base)
-            guard let cgImage = Self.ciContext.createCGImage(filtered, from: base.extent) else {
-                continue
-            }
-            let platformImage = PlatformImageBridge.makeImage(from: cgImage)
-            thumbnails[entry.identifier] = Image(platformImage: platformImage)
+            // Detached per-effect task keeps the filter + encode off
+            // the main actor. The `await` between iterations yields
+            // back to the run loop so tiles animate in progressively
+            // rather than the strip hitching while all 11 render in a
+            // blocking loop. `Self.ciContext` is a class reference
+            // that Apple documents as thread-safe for the methods we
+            // use; `CGImage` and `ProfileImageEffect` are both
+            // effectively Sendable.
+            let cgImage: CGImage? = await Task.detached(priority: .userInitiated) {
+                let ciImage = CIImage(cgImage: baseCGImage)
+                let filtered = EffectsPipeline.apply(entry, to: ciImage)
+                return Self.ciContext.createCGImage(filtered, from: ciImage.extent)
+            }.value
+
+            guard let cgImage else { continue }
+            thumbnails[entry.identifier] = Image(platformImage: PlatformImageBridge.makeImage(from: cgImage))
         }
     }
 
-    /// Shared CIContext for thumbnail rendering. Created once per view
-    /// lifetime; CIContext creation is expensive enough that sharing is
-    /// the common pattern even for short-lived views.
-    private static let ciContext = CIContext(options: nil)
+    /// Shared CIContext for thumbnail rendering. CIContext creation is
+    /// expensive enough that sharing is the common pattern even for
+    /// short-lived views. `nonisolated` because the View type is
+    /// `@MainActor`-isolated by default but the thumbnail-generation
+    /// loop reads this from a detached task — CIContext is Sendable
+    /// so a plain `nonisolated` declaration is enough.
+    nonisolated private static let ciContext = CIContext(options: nil)
 
-    /// Build a center-cropped, downsampled CIImage suitable for the
+    /// Build a center-cropped, downsampled CGImage suitable for the
     /// film strip. Detached to keep the draw off the main actor.
-    private func makeThumbnailCIImage(from source: PKPlatformImage) async -> CIImage? {
+    /// Returns CGImage rather than CIImage because CGImage is
+    /// effectively Sendable (and formally will be once Apple annotates
+    /// CoreGraphics) — letting us pass the base across the actor
+    /// boundary into each per-effect detached task without Swift 6
+    /// Sendable complaints.
+    private func makeThumbnailCGImage(from source: PKPlatformImage) async -> CGImage? {
         await Task.detached(priority: .userInitiated) { [thumbnailRenderDimension] in
             let pixelSize = PlatformImageBridge.pixelSize(for: source)
             guard pixelSize.width > 0, pixelSize.height > 0 else { return nil }
@@ -173,8 +201,7 @@ struct ProfileImageEffectsStrip: View {
             )
             context.draw(fullCG, in: drawRect)
 
-            guard let cropped = context.makeImage() else { return nil }
-            return CIImage(cgImage: cropped)
+            return context.makeImage()
         }.value
     }
 }

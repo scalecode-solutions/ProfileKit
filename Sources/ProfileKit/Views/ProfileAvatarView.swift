@@ -39,6 +39,12 @@ public struct ProfileAvatarView: View {
                         .inset(by: configuration.borderWidth / 2)
                         .stroke(configuration.borderColor.color, lineWidth: configuration.borderWidth)
                 )
+                // The previous non-enum API labeled avatars with the
+                // paired identity's display name. `ProfileAvatarContent.image`
+                // doesn't carry an identity, so fall back to a generic
+                // label. Hosts wanting a per-user label can wrap the view
+                // in their own `.accessibilityLabel(...)`.
+                .accessibilityLabel(Text("Profile photo"))
 
         case .initials(let identity, let style):
             InitialsAvatarView(

@@ -165,13 +165,21 @@ public struct ProfileInitialsEditorContent: View {
     private var solidBackgroundControls: some View {
         if case .solid(let color) = style.background {
             ColorPicker(
-                configuration.texts.initialsForegroundLabel,
+                "",
                 selection: Binding(
                     get: { color.color },
                     set: { style.background = .solid(ProfileColor($0)) }
                 )
             )
             .labelsHidden()
+            // Explicit accessibility label — `.labelsHidden()` hides
+            // the visual label but leaves the underlying string as the
+            // VoiceOver announcement. The previous version passed
+            // `initialsForegroundLabel` here (copy-paste from the
+            // foreground section), which read as "Foreground" even
+            // though the control sets the BACKGROUND color. Use the
+            // background heading instead so VoiceOver matches intent.
+            .accessibilityLabel(configuration.texts.initialsBackgroundHeading)
         }
     }
 
@@ -214,6 +222,14 @@ public struct ProfileInitialsEditorContent: View {
         .buttonStyle(.bordered)
         .controlSize(.small)
         .frame(maxWidth: .infinity)
+        // VoiceOver would otherwise read the raw arrow glyph ("Up
+        // arrow"), which is non-descriptive for a gradient-angle
+        // control. Announce the target angle instead. Plain String
+        // (not LocalizedStringKey) because the visible glyph label
+        // isn't localized either — hosts wanting localized
+        // announcements can wrap the view with their own
+        // `.accessibilityLabel(...)`.
+        .accessibilityLabel("Set angle to \(Int(angle.rounded())) degrees")
     }
 
     @ViewBuilder
