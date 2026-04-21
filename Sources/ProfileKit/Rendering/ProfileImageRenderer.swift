@@ -191,16 +191,31 @@ public enum ProfileImageRenderer {
         )
         let scaledSize = viewport.scaledDisplaySize
         let offset = viewport.pointOffset(from: viewport.clampedNormalizedOffset(clampedState.offset))
+        // CG's default coord system is origin-bottom-left, Y-up. The
+        // SwiftUI preview uses UIKit-style Y-down coords, so positive
+        // drag.y moves the image visually DOWN — which, in CG Y-up,
+        // corresponds to a LOWER y value for the drawRect origin.
         let drawOrigin = CGPoint(
             x: (canvasSize - scaledSize.width) / 2 + offset.width,
-            y: (canvasSize - scaledSize.height) / 2 + offset.height
+            y: (canvasSize - scaledSize.height) / 2 - offset.height
         )
         let drawRect = CGRect(origin: drawOrigin, size: scaledSize)
 
-        context.translateBy(x: 0, y: canvasSize)
-        context.scaleBy(x: 1, y: -1)
+        // NO Y-flip on the CTM. A previous version did
+        // `translateBy(0, canvasSize); scaleBy(1, -1)` before drawing,
+        // which is the UIGraphicsBeginImageContext pattern — wrong
+        // here. `CGContext.draw(cgImage:, in:)` draws a CGImage upright
+        // in a default Y-up bitmap context; pre-flipping the CTM is
+        // what produces the classic "upside-down render" pitfall. We
+        // build our own raw CGBitmapContext, so we draw without any
+        // orientation compensation.
         context.translateBy(x: canvasSize / 2, y: canvasSize / 2)
-        context.rotate(by: viewport.rotationRadians)
+        // Negate rotation because the SwiftUI preview uses
+        // `.rotationEffect(.degrees(d))` — CW for positive `d` —
+        // while CG's default Y-up coord system makes `context.rotate`
+        // CCW for positive radians. Negating keeps the rendered output
+        // matching what the user just confirmed in the editor.
+        context.rotate(by: -viewport.rotationRadians)
         // Apply horizontal flip around the canvas center. Order relative
         // to rotation matters: flip-then-rotate yields the intuitive
         // mirror-horizontally-across-the-visible-orientation behavior.
