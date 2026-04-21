@@ -73,6 +73,25 @@ struct ProfileKitTests {
         #expect(result.contentType == .jpeg)
     }
 
+    @Test func workflowBuildsInitialsDraft() {
+        let identity = ProfileIdentity(displayName: "Jamie Doe")
+        let draft = ProfileImageWorkflow.makeInitialsDraft(identity: identity)
+
+        #expect(draft.identity == identity)
+        #expect(draft.style == .default)
+    }
+
+    @Test func workflowExportsInitialsDraft() throws {
+        let identity = ProfileIdentity(displayName: "Jamie Doe")
+        let draft = ProfileImageWorkflow.makeInitialsDraft(identity: identity)
+        let result = try ProfileImageWorkflow.export(initialsDraft: draft)
+
+        #expect(!result.data.isEmpty)
+        let pixelSize = PlatformImageBridge.pixelSize(for: result.image)
+        // Default render config uses the photo preset (.profilePhoto).
+        #expect(Int(pixelSize.width.rounded()) == ProfileImageRenderConfiguration.profilePhoto.exportDimension)
+    }
+
     @Test func rendererBakesEffectIntoOutput() throws {
         // Proves the end-to-end effect pipeline: adjustment state
         // carries .noir, renderer applies EffectsPipeline, and the

@@ -47,6 +47,43 @@ public enum ProfileImageWorkflow {
             configuration: editorConfiguration.renderConfiguration
         )
     }
+
+    // MARK: - Initials path
+
+    /// Builds a ready-to-edit initials draft. Intentionally thin — the
+    /// style is value-type-defaulted and the identity already carries
+    /// everything the renderer needs. Symmetry with `makeDraft(from:)`
+    /// on the photo side keeps the two entry points looking alike to
+    /// integrators.
+    public static func makeInitialsDraft(
+        identity: ProfileIdentity,
+        style: ProfileInitialsStyle = .default
+    ) -> ProfileInitialsDraft {
+        ProfileInitialsDraft(identity: identity, style: style)
+    }
+
+    /// Synchronously render an initials draft to a `ProfileImageEditResult`.
+    /// Same output type as `export(draft:)` on the photo path so host
+    /// code that uploads / persists the result doesn't need to know
+    /// which source produced it.
+    public static func export(
+        initialsDraft: ProfileInitialsDraft,
+        configuration: ProfileImageEditorConfiguration = .profilePhoto
+    ) throws -> ProfileImageEditResult {
+        try ProfileInitialsRenderer.render(draft: initialsDraft, configuration: configuration)
+    }
+
+    /// Async variant — offloads the CGContext + Core Text pass to a
+    /// detached cooperative task for large `exportDimension` values.
+    public static func exportAsync(
+        initialsDraft: ProfileInitialsDraft,
+        configuration: ProfileImageEditorConfiguration = .profilePhoto
+    ) async throws -> ProfileImageEditResult {
+        try await ProfileInitialsRenderer.renderAsync(
+            draft: initialsDraft,
+            configuration: configuration
+        )
+    }
 }
 
 // PhotosPickerItem integration moved to
