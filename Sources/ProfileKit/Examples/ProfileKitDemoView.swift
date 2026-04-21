@@ -2,16 +2,21 @@ import SwiftUI
 
 public struct ProfileKitDemoView: View {
     @State private var draft: ProfileImageDraft = try! ProfileImageWorkflow.makeDraft(
-        from: .image(ProfileKitDemoSamples.portraitSample()),
-        identity: ProfileIdentity(displayName: "Taylor Example")
+        from: .image(ProfileKitDemoSamples.portraitSample())
     )
     @State private var latestResult: ProfileImageEditResult?
+    @State private var latestInitialsResult: ProfileImageEditResult?
+    @State private var initialsDraft = ProfileImageWorkflow.makeInitialsDraft(
+        identity: ProfileIdentity(displayName: "Taylor Example")
+    )
     @State private var showingLandscape = false
     @State private var exportError: String?
+    @State private var initialsExportError: String?
 
     // Live-configurable knobs so the demo exercises every tier-1/tier-2
     // feature without requiring code edits.
     @State private var showsGridOverlay = true
+    @State private var showsEffects = true
     @State private var appearance: ProfileImageEditorAppearance = .system
     @State private var exportCircular = false
     @State private var initialsFontWeight: DemoFontWeight = .semibold
@@ -30,6 +35,8 @@ public struct ProfileKitDemoView: View {
                     previewColumn
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                initialsColumn
             }
             .padding(24)
         }
@@ -68,6 +75,8 @@ public struct ProfileKitDemoView: View {
 
             Toggle("Rule-of-thirds grid during crop", isOn: $showsGridOverlay)
 
+            Toggle("Effects film strip", isOn: $showsEffects)
+
             Picker("Appearance", selection: $appearance) {
                 Text("System").tag(ProfileImageEditorAppearance.system)
                 Text("Force Light").tag(ProfileImageEditorAppearance.forceLight)
@@ -94,11 +103,28 @@ public struct ProfileKitDemoView: View {
     private var editorConfiguration: ProfileImageEditorConfiguration {
         ProfileImageEditorConfiguration(
             showsGridOverlay: showsGridOverlay,
+            showsEffects: showsEffects,
             renderConfiguration: ProfileImageRenderConfiguration(
                 cropImageCircular: exportCircular
             ),
             appearance: appearance
         )
+    }
+
+    /// Identity reused across the preview tiles so the step-21 content
+    /// enum has a stable `.initials` fallback source when no photo has
+    /// been committed yet.
+    private var previewIdentity: ProfileIdentity {
+        ProfileIdentity(displayName: "Taylor Example")
+    }
+
+    /// Content for the preview tiles — a photo if the user has
+    /// committed one, initials otherwise.
+    private var heroContent: ProfileAvatarContent {
+        if let image = latestResult?.image {
+            return .image(image)
+        }
+        return .initials(previewIdentity)
     }
 
     private var avatarConfiguration: ProfileAvatarConfiguration {
@@ -136,10 +162,9 @@ public struct ProfileKitDemoView: View {
                 .font(.title3.weight(.semibold))
 
             // Big hero — exercises the current configuration. Uses the
-            // latest export if present, else the fallback-initials path.
+            // latest export if present, else the initials path.
             ProfileAvatarView(
-                image: latestResult?.image,
-                identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                content: heroContent,
                 configuration: avatarConfiguration
             )
 
@@ -147,14 +172,12 @@ public struct ProfileKitDemoView: View {
             // at different render sizes and in rounded-rect shape.
             HStack(spacing: 12) {
                 ProfileAvatarView(
-                    image: latestResult?.image,
-                    identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                    content: heroContent,
                     configuration: .init(size: 72, shape: .circle, fontWeight: initialsFontWeight.value)
                 )
 
                 ProfileAvatarView(
-                    image: latestResult?.image,
-                    identity: draft.identity ?? ProfileIdentity(displayName: "Taylor Example"),
+                    content: heroContent,
                     configuration: .init(size: 56, shape: .roundedRect(cornerRadius: 18), fontWeight: initialsFontWeight.value)
                 )
             }
@@ -189,6 +212,72 @@ public struct ProfileKitDemoView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
+    /// Full designed-initials editor column. Demonstrates that the
+    /// initials path produces the same ProfileImageEditResult shape as
+    /// the photo path — the committed image sits alongside the photo
+    /// result with identical handling.
+    private var initialsColumn: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Initials Editor")
+                .font(.title3.weight(.semibold))
+
+            Text("Design a monogram, commit for a renderable image file — same output contract as the photo path.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: 24) {
+                ProfileInitialsEditorScreen(
+                    draft: initialsDraft,
+                    configuration: editorConfiguration,
+                    onCancel: {},
+                    onCommit: handleInitialsCommit
+                )
+                .frame(maxWidth: 560)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(.thinMaterial)
+                )
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Committed initials")
+                        .font(.headline)
+
+                    if let latestInitialsResult {
+                        Image(platformImage: latestInitialsResult.image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 160, height: 160)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+                        Text("Exported \(latestInitialsResult.data.count) bytes · \(latestInitialsResult.contentType.preferredFilenameExtension?.uppercased() ?? "?")")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Tap \"Use Avatar\" to export.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let initialsExportError {
+                        Text(initialsExportError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+    }
+
+    private func handleInitialsCommit(_ result: Result<ProfileImageEditResult, Error>) {
+        switch result {
+        case .success(let value):
+            latestInitialsResult = value
+            initialsExportError = nil
+        case .failure(let error):
+            initialsExportError = error.localizedDescription
+        }
+    }
+
     private func handleCommit(_ result: Result<ProfileImageEditResult, Error>) {
         switch result {
         case .success(let value):
@@ -204,8 +293,7 @@ public struct ProfileKitDemoView: View {
         let image = showingLandscape ? ProfileKitDemoSamples.landscapeSample() : ProfileKitDemoSamples.portraitSample()
         do {
             draft = try ProfileImageWorkflow.makeDraft(
-                from: .image(image),
-                identity: ProfileIdentity(displayName: "Taylor Example")
+                from: .image(image)
             )
             latestResult = nil
             exportError = nil
@@ -215,15 +303,16 @@ public struct ProfileKitDemoView: View {
     }
 }
 
-/// Demo-side enum wrapping `Font.Weight` — SwiftUI's `Font.Weight`
-/// isn't directly `Identifiable` / iterable, and this is only used to
-/// drive the segmented picker in the demo view.
+/// Demo-side enum wrapping `ProfileFontWeight` for the segmented
+/// picker. `ProfileFontWeight` is itself `CaseIterable` but covers the
+/// full nine-weight range; the demo exposes only the five most commonly
+/// used to keep the picker readable.
 private enum DemoFontWeight: Int, CaseIterable, Identifiable {
     case regular, medium, semibold, bold, heavy
 
     var id: Int { rawValue }
 
-    var value: Font.Weight {
+    var value: ProfileFontWeight {
         switch self {
         case .regular:  return .regular
         case .medium:   return .medium

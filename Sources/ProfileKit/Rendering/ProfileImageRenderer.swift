@@ -55,7 +55,7 @@ public enum ProfileImageRenderer {
         // When circular export is requested with a circle crop, alpha
         // is required — force PNG regardless of the caller's outputType.
         // The final contentType returned reflects the actual encoding.
-        let effectiveConfig = effectiveRenderConfiguration(
+        let effectiveConfig = ProfileImageEncoding.effectiveRenderConfiguration(
             configuration,
             cropShape: editorConfiguration.cropShape
         )
@@ -68,29 +68,13 @@ public enum ProfileImageRenderer {
             renderConfiguration: effectiveConfig
         )
         let image = PlatformImageBridge.makeImage(from: cgImage)
-        let data = try encodedData(from: cgImage, configuration: effectiveConfig)
+        let data = try ProfileImageEncoding.encodedData(from: cgImage, configuration: effectiveConfig)
         return ProfileImageEditResult(
             image: image,
             data: data,
             contentType: effectiveConfig.outputType,
-            editorState: editorState
+            origin: .photo(editorState)
         )
-    }
-
-    /// Patches `outputType` to `.png` when the render config asks for
-    /// a circular export with a circle crop. JPEG can't carry alpha;
-    /// silently upgrading the format is kinder than failing the render.
-    private static func effectiveRenderConfiguration(
-        _ input: ProfileImageRenderConfiguration,
-        cropShape: ProfileAvatarShape
-    ) -> ProfileImageRenderConfiguration {
-        guard input.cropImageCircular, cropShape == .circle, input.outputType != .png else {
-            return input
-        }
-
-        var patched = input
-        patched.outputType = .png
-        return patched
     }
 
     public static func renderAvatar(
@@ -122,7 +106,7 @@ public enum ProfileImageRenderer {
             editorConfiguration: editorConfiguration,
             renderConfiguration: configuration
         )
-        return try encodedData(from: cgImage, configuration: configuration)
+        return try ProfileImageEncoding.encodedData(from: cgImage, configuration: configuration)
     }
 
     private static func renderCGImage(
@@ -236,61 +220,44 @@ public enum ProfileImageRenderer {
         return rendered
     }
 
-    private static func encodedData(
-        from cgImage: CGImage,
-        configuration: ProfileImageRenderConfiguration
-    ) throws -> Data {
-        let mutableData = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            mutableData,
-            configuration.outputType.identifier as CFString,
-            1,
-            nil
-        ) else {
-            throw ProfileImageRenderingError.exportFailed
-        }
-
-        let properties: [CFString: Any]
-        if configuration.outputType == .jpeg {
-            properties = [kCGImageDestinationLossyCompressionQuality: configuration.compressionQuality]
-        } else {
-            properties = [:]
-        }
-
-        CGImageDestinationAddImage(destination, cgImage, properties as CFDictionary)
-
-        guard CGImageDestinationFinalize(destination) else {
-            throw ProfileImageRenderingError.exportFailed
-        }
-
-        return mutableData as Data
-    }
-
     private static func adjustedCGImage(
         from cgImage: CGImage,
         adjustments: ProfileImageAdjustmentState
     ) throws -> CGImage {
-        guard adjustments != .neutral else {
+        // Short-circuit: if nothing touches the image (no effect, no
+        // color-control deltas), skip the CIImage round-trip entirely.
+        if adjustments.effect.isIdentity && adjustments.isColorControlsNeutral {
             return cgImage
         }
 
-        let input = CIImage(cgImage: cgImage)
-        guard let filter = CIFilter(name: "CIColorControls") else {
-            throw ProfileImageRenderingError.adjustedImageCreationFailed
+        // 1) Effect first. Applying the film-look preset before
+        // brightness/contrast/saturation means the user's fine-tune
+        // adjustments read as "noir, a bit brighter" rather than
+        // "brighten, then noir" (which would crush highlights the
+        // preset was trying to preserve).
+        var ciImage = CIImage(cgImage: cgImage)
+        ciImage = EffectsPipeline.apply(adjustments.effect, to: ciImage)
+
+        // 2) Color controls, skipped when neutral so the effect-only
+        // case doesn't pay for an unnecessary pass.
+        if !adjustments.isColorControlsNeutral {
+            guard let filter = CIFilter(name: "CIColorControls") else {
+                throw ProfileImageRenderingError.adjustedImageCreationFailed
+            }
+            filter.setValue(ciImage, forKey: kCIInputImageKey)
+            filter.setValue(adjustments.brightness, forKey: kCIInputBrightnessKey)
+            filter.setValue(adjustments.contrast, forKey: kCIInputContrastKey)
+            filter.setValue(adjustments.saturation, forKey: kCIInputSaturationKey)
+
+            guard let output = filter.outputImage else {
+                throw ProfileImageRenderingError.adjustedImageCreationFailed
+            }
+            ciImage = output
         }
 
-        filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(adjustments.brightness, forKey: kCIInputBrightnessKey)
-        filter.setValue(adjustments.contrast, forKey: kCIInputContrastKey)
-        filter.setValue(adjustments.saturation, forKey: kCIInputSaturationKey)
-
-        guard
-            let output = filter.outputImage,
-            let rendered = ciContext.createCGImage(output, from: output.extent)
-        else {
+        guard let rendered = ciContext.createCGImage(ciImage, from: ciImage.extent) else {
             throw ProfileImageRenderingError.adjustedImageCreationFailed
         }
-
         return rendered
     }
 }

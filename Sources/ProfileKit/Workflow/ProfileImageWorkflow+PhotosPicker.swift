@@ -11,14 +11,13 @@ import PhotosUI
 public extension ProfileImageWorkflow {
     static func makeDraft(
         from item: PhotosPickerItem,
-        identity: ProfileIdentity? = nil,
         configuration: ProfileImageEditorConfiguration = .profilePhoto
     ) async throws -> ProfileImageDraft {
         guard let data = try await item.loadTransferable(type: Data.self) else {
             throw ProfileImageWorkflowError.missingTransferableData
         }
 
-        return try makeDraft(from: .data(data), identity: identity, configuration: configuration)
+        return try makeDraft(from: .data(data), configuration: configuration)
     }
 }
 #endif

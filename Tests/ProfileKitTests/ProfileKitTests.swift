@@ -54,13 +54,9 @@ struct ProfileKitTests {
 
     @Test func workflowBuildsDraftWithRecommendedState() throws {
         let data = try TestImageFactory.makePNGData(width: 300, height: 500)
-        let draft = try ProfileImageWorkflow.makeDraft(
-            from: .data(data),
-            identity: ProfileIdentity(displayName: "Jamie Doe")
-        )
+        let draft = try ProfileImageWorkflow.makeDraft(from: .data(data))
 
         #expect(draft.contentType == .png)
-        #expect(draft.identity?.initials == "JD")
         #expect(draft.editorState.zoom >= ProfileImageEditorConfiguration.profilePhoto.minimumZoom)
     }
 
@@ -71,5 +67,85 @@ struct ProfileKitTests {
 
         #expect(!result.data.isEmpty)
         #expect(result.contentType == .jpeg)
+    }
+
+    @Test func workflowBuildsInitialsDraft() {
+        let identity = ProfileIdentity(displayName: "Jamie Doe")
+        let draft = ProfileImageWorkflow.makeInitialsDraft(identity: identity)
+
+        #expect(draft.identity == identity)
+        #expect(draft.style == .default)
+    }
+
+    @Test func workflowReopensPhotoResult() throws {
+        let cgImage = TestImageFactory.makeCGImage(width: 40, height: 40)
+        let committed = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: ProfileImageEditorState(zoom: 1.3),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        let reopened = ProfileImageWorkflow.reopen(committed)
+        guard case .photo(let draft) = reopened else {
+            Issue.record("Expected photo reopen")
+            return
+        }
+        #expect(draft.editorState.zoom == 1.3)
+    }
+
+    @Test func workflowReopensInitialsResult() throws {
+        let initialsDraft = ProfileImageWorkflow.makeInitialsDraft(
+            identity: ProfileIdentity(displayName: "Jamie Doe"),
+            style: ProfileInitialsStyle(glyph: "JD")
+        )
+        let committed = try ProfileImageWorkflow.export(
+            initialsDraft: initialsDraft,
+            configuration: .init(
+                renderConfiguration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+            )
+        )
+
+        let reopened = ProfileImageWorkflow.reopen(committed)
+        guard case .initials(let draft) = reopened else {
+            Issue.record("Expected initials reopen")
+            return
+        }
+        #expect(draft.identity.displayName == "Jamie Doe")
+        #expect(draft.style.glyph == "JD")
+    }
+
+    @Test func workflowExportsInitialsDraft() throws {
+        let identity = ProfileIdentity(displayName: "Jamie Doe")
+        let draft = ProfileImageWorkflow.makeInitialsDraft(identity: identity)
+        let result = try ProfileImageWorkflow.export(initialsDraft: draft)
+
+        #expect(!result.data.isEmpty)
+        let pixelSize = PlatformImageBridge.pixelSize(for: result.image)
+        // Default render config uses the photo preset (.profilePhoto).
+        #expect(Int(pixelSize.width.rounded()) == ProfileImageRenderConfiguration.profilePhoto.exportDimension)
+    }
+
+    @Test func rendererBakesEffectIntoOutput() throws {
+        // Proves the end-to-end effect pipeline: adjustment state
+        // carries .noir, renderer applies EffectsPipeline, and the
+        // exported bytes differ from an otherwise-identical render
+        // with .none.
+        let cgImage = TestImageFactory.makeCGImage(width: 40, height: 40)
+
+        let neutral = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: .init(),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        let noir = try ProfileImageRenderer.renderEditResult(
+            from: .cgImage(cgImage),
+            editorState: ProfileImageEditorState(
+                adjustments: ProfileImageAdjustmentState(effect: .noir)
+            ),
+            configuration: .init(exportDimension: 64, compressionQuality: 1, outputType: .png)
+        )
+
+        #expect(noir.data != neutral.data)
     }
 }

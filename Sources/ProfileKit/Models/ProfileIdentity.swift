@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ProfileIdentity: Equatable, Sendable {
+public struct ProfileIdentity: Equatable, Hashable, Sendable, Codable {
     public var displayName: String
     public var initialsOverride: String?
     public var fallbackSeed: String?

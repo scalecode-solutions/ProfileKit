@@ -80,6 +80,10 @@ public struct ProfileImageEditorContent: View {
 
             ScrollView {
                 VStack(spacing: 20) {
+                    if configuration.showsEffects {
+                        effectsSection
+                    }
+
                     if configuration.showsLivePreview {
                         previewRow
                             .padding(.horizontal, 24)
@@ -247,6 +251,25 @@ public struct ProfileImageEditorContent: View {
             .scaleEffect(viewport.effectiveZoom)
             .rotationEffect(.degrees(displayRotation))
             .offset(x: pointOffset.width, y: pointOffset.height)
+    }
+
+    /// Section above the adjustment sliders: heading + horizontal
+    /// film-strip of effect presets. The strip drives
+    /// `editorState.adjustments.effect` directly so the renderer picks
+    /// up the selection without any additional plumbing.
+    private var effectsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(configuration.texts.effectsHeading)
+                .font(.headline)
+                .padding(.horizontal, 24)
+
+            ProfileImageEffectsStrip(
+                sourceImage: sourceImage,
+                effect: $editorState.adjustments.effect,
+                catalog: configuration.effectsCatalog,
+                texts: configuration.texts
+            )
+        }
     }
 
     private var previewRow: some View {
