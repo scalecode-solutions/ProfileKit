@@ -72,65 +72,105 @@ public struct ProfileImageEditorView: View {
     /// Apple Photos-style "this is obviously broken, fix the
     /// orientation" affordances that users reach for first.
     private var transformToolbar: some View {
-        HStack(spacing: 20) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    editorState.adjustments.quantizedRotationDegrees -= 90
+        // Circular glass buttons for the coarse transform actions. The
+        // flipped state uses glassProminent so the user can see at a
+        // glance that horizontal flip is engaged.
+        GlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        editorState.adjustments.quantizedRotationDegrees -= 90
+                    }
+                } label: {
+                    Image(systemName: "rotate.left")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
                 }
-            } label: {
-                Image(systemName: "rotate.left")
-                    .font(.title3)
-            }
-            .accessibilityLabel(configuration.texts.rotateLeftLabel)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(configuration.texts.rotateLeftLabel)
 
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    editorState.adjustments.quantizedRotationDegrees += 90
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        editorState.adjustments.quantizedRotationDegrees += 90
+                    }
+                } label: {
+                    Image(systemName: "rotate.right")
+                        .font(.title3)
+                        .frame(width: 44, height: 44)
                 }
-            } label: {
-                Image(systemName: "rotate.right")
-                    .font(.title3)
-            }
-            .accessibilityLabel(configuration.texts.rotateRightLabel)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(configuration.texts.rotateRightLabel)
 
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                    editorState.adjustments.flippedHorizontally.toggle()
+                if editorState.adjustments.flippedHorizontally {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            editorState.adjustments.flippedHorizontally.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .buttonBorderShape(.circle)
+                    .tint(.white)
+                    .clipShape(Circle())
+                    .accessibilityLabel(configuration.texts.flipHorizontalLabel)
+                } else {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                            editorState.adjustments.flippedHorizontally.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .accessibilityLabel(configuration.texts.flipHorizontalLabel)
                 }
-            } label: {
-                Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
-                    .font(.title3)
-            }
-            .accessibilityLabel(configuration.texts.flipHorizontalLabel)
 
-            Spacer()
+                Spacer()
+            }
         }
     }
 
     private var header: some View {
-        HStack {
-            Button(configuration.texts.cancelButton, action: onCancel)
+        // Group the three header buttons inside a GlassEffectContainer
+        // so adjacent glass surfaces share a sampling region — the
+        // standard iOS 26 pattern for button clusters. Cancel + Reset
+        // are secondary actions (.glass); Use Photo is the primary
+        // action (.glassProminent).
+        GlassEffectContainer(spacing: 8) {
+            HStack(spacing: 8) {
+                Button(configuration.texts.cancelButton, action: onCancel)
+                    .buttonStyle(.glass)
 
-            Spacer()
+                Spacer()
 
-            Button(configuration.texts.resetButton) {
-                errorMessage = nil
-                editorState.reset()
-                didApplyRecommendedInitialState = false
-                applyRecommendedInitialStateIfNeeded(force: true)
-            }
-
-            Button {
-                commitEdits()
-            } label: {
-                if isExporting {
-                    ProgressView()
-                } else {
-                    Text(configuration.texts.confirmButton)
+                Button(configuration.texts.resetButton) {
+                    errorMessage = nil
+                    editorState.reset()
+                    didApplyRecommendedInitialState = false
+                    applyRecommendedInitialStateIfNeeded(force: true)
                 }
+                .buttonStyle(.glass)
+
+                Button {
+                    commitEdits()
+                } label: {
+                    if isExporting {
+                        ProgressView()
+                    } else {
+                        Text(configuration.texts.confirmButton)
+                    }
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(isExporting)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(isExporting)
         }
     }
 
