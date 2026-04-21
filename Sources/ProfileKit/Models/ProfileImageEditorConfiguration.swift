@@ -15,6 +15,13 @@ public struct ProfileImageEditorConfiguration: Sendable {
     /// canvas during editing. Helps the user frame the subject. The
     /// grid never appears in the exported image.
     public var showsGridOverlay: Bool
+    /// Whether the effects strip is shown under the transform toolbar.
+    /// Turn off for a chromeless photo editor with no preset gallery.
+    public var showsEffects: Bool
+    /// Ordered list of effect presets shown in the effects strip.
+    /// Host apps that want a subset or custom ordering override here;
+    /// defaults to the locked 11-entry catalog.
+    public var effectsCatalog: [ProfileImageEffect]
     public var renderConfiguration: ProfileImageRenderConfiguration
     /// All user-visible strings in the editor. Swap in localized
     /// versions or custom voice here; defaults ship in English.
@@ -43,6 +50,8 @@ public struct ProfileImageEditorConfiguration: Sendable {
         showsLivePreview: Bool = true,
         showsAdjustmentControls: Bool = true,
         showsGridOverlay: Bool = true,
+        showsEffects: Bool = true,
+        effectsCatalog: [ProfileImageEffect] = ProfileImageEffect.defaultCatalog,
         renderConfiguration: ProfileImageRenderConfiguration = .profilePhoto,
         texts: ProfileImageEditorTexts = .default,
         appearance: ProfileImageEditorAppearance = .system,
@@ -59,6 +68,8 @@ public struct ProfileImageEditorConfiguration: Sendable {
         self.showsLivePreview = showsLivePreview
         self.showsAdjustmentControls = showsAdjustmentControls
         self.showsGridOverlay = showsGridOverlay
+        self.showsEffects = showsEffects
+        self.effectsCatalog = effectsCatalog
         self.renderConfiguration = renderConfiguration
         self.texts = texts
         self.appearance = appearance

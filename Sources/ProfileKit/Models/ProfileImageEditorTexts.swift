@@ -27,6 +27,13 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
     public var adjustmentsHeading: LocalizedStringKey
     public var previewHeading: LocalizedStringKey
     public var interactionInstructions: LocalizedStringKey
+    /// Section heading for the horizontal effects strip.
+    public var effectsHeading: LocalizedStringKey
+    /// Display names per effect preset. Keyed by `ProfileImageEffect`
+    /// so hosts can override just the labels they care about without
+    /// redeclaring the whole catalog. Effects not present in the map
+    /// fall back to their capitalized identifier (e.g. "Mono", "Noir").
+    public var effectDisplayNames: [ProfileImageEffect: LocalizedStringKey]
 
     public init(
         cancelButton: LocalizedStringKey = "Cancel",
@@ -41,7 +48,9 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
         rotationLabel: LocalizedStringKey = "Rotation",
         adjustmentsHeading: LocalizedStringKey = "Adjustments",
         previewHeading: LocalizedStringKey = "Preview",
-        interactionInstructions: LocalizedStringKey = "Pinch to zoom, drag to reposition"
+        interactionInstructions: LocalizedStringKey = "Pinch to zoom, drag to reposition",
+        effectsHeading: LocalizedStringKey = "Effects",
+        effectDisplayNames: [ProfileImageEffect: LocalizedStringKey] = ProfileImageEditorTexts.makeDefaultEffectDisplayNames()
     ) {
         self.cancelButton = cancelButton
         self.resetButton = resetButton
@@ -56,6 +65,50 @@ public struct ProfileImageEditorTexts: @unchecked Sendable {
         self.adjustmentsHeading = adjustmentsHeading
         self.previewHeading = previewHeading
         self.interactionInstructions = interactionInstructions
+        self.effectsHeading = effectsHeading
+        self.effectDisplayNames = effectDisplayNames
+    }
+
+    /// Resolves a display name for `effect`. Returns the host-provided
+    /// label when one is registered, otherwise a fallback derived from
+    /// the effect's stable identifier. Keyed by parameter-agnostic
+    /// identifier through `ProfileImageEffect.Hashable`: `.sepia(0.8)`
+    /// and `.sepia(0.2)` map to the same label.
+    public func displayName(for effect: ProfileImageEffect) -> LocalizedStringKey {
+        if let override = effectDisplayNames[effect] {
+            return override
+        }
+        // Match by identifier so any sepia intensity hits the same label.
+        for (key, value) in effectDisplayNames where key.identifier == effect.identifier {
+            return value
+        }
+        return LocalizedStringKey(effect.identifier.capitalized)
+    }
+
+    /// Default English labels for the locked catalog. A function
+    /// rather than a `static let` because the dictionary value type
+    /// (`LocalizedStringKey`) isn't formally `Sendable` — Swift 6's
+    /// strict concurrency flags the mutable-global pattern even though
+    /// `LocalizedStringKey` is effectively immutable. Calling this
+    /// on demand sidesteps the issue with zero observable cost.
+    ///
+    /// Keyed with a sentinel parameter value for parameterized cases —
+    /// the display name lookup matches by identifier so intensity
+    /// doesn't matter.
+    public static func makeDefaultEffectDisplayNames() -> [ProfileImageEffect: LocalizedStringKey] {
+        [
+            .none:                   "None",
+            .mono:                   "Mono",
+            .noir:                   "Noir",
+            .tonal:                  "Tonal",
+            .sepia(intensity: 0.8):  "Sepia",
+            .chrome:                 "Chrome",
+            .fade:                   "Fade",
+            .instant:                "Instant",
+            .process:                "Process",
+            .transfer:               "Transfer",
+            .comic:                  "Comic",
+        ]
     }
 
     public static let `default` = Self()
