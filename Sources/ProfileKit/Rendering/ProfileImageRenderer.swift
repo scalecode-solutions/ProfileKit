@@ -52,21 +52,45 @@ public enum ProfileImageRenderer {
         editorConfiguration: ProfileImageEditorConfiguration = .profilePhoto,
         configuration: ProfileImageRenderConfiguration = .profilePhoto
     ) throws -> ProfileImageEditResult {
+        // When circular export is requested with a circle crop, alpha
+        // is required — force PNG regardless of the caller's outputType.
+        // The final contentType returned reflects the actual encoding.
+        let effectiveConfig = effectiveRenderConfiguration(
+            configuration,
+            cropShape: editorConfiguration.cropShape
+        )
+
         let decoded = try ProfileImageDecoder.decode(source)
         let cgImage = try renderCGImage(
             from: decoded,
             editorState: editorState,
             editorConfiguration: editorConfiguration,
-            renderConfiguration: configuration
+            renderConfiguration: effectiveConfig
         )
         let image = PlatformImageBridge.makeImage(from: cgImage)
-        let data = try encodedData(from: cgImage, configuration: configuration)
+        let data = try encodedData(from: cgImage, configuration: effectiveConfig)
         return ProfileImageEditResult(
             image: image,
             data: data,
-            contentType: configuration.outputType,
+            contentType: effectiveConfig.outputType,
             editorState: editorState
         )
+    }
+
+    /// Patches `outputType` to `.png` when the render config asks for
+    /// a circular export with a circle crop. JPEG can't carry alpha;
+    /// silently upgrading the format is kinder than failing the render.
+    private static func effectiveRenderConfiguration(
+        _ input: ProfileImageRenderConfiguration,
+        cropShape: ProfileAvatarShape
+    ) -> ProfileImageRenderConfiguration {
+        guard input.cropImageCircular, cropShape == .circle, input.outputType != .png else {
+            return input
+        }
+
+        var patched = input
+        patched.outputType = .png
+        return patched
     }
 
     public static func renderAvatar(
@@ -127,6 +151,20 @@ public enum ProfileImageRenderer {
         context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0))
         context.fill(cropRect)
 
+        // Circular alpha mask — only applied when the caller requested
+        // a circular export AND the crop shape is a circle. Installed
+        // BEFORE the image draw so the off-circle pixels never get
+        // committed to the context; the resulting PNG has transparent
+        // corners. Saved state is restored so the subsequent transform
+        // math still operates on the full square canvas.
+        let useCircularMask = renderConfiguration.cropImageCircular
+            && editorConfiguration.cropShape == .circle
+        if useCircularMask {
+            context.saveGState()
+            context.addEllipse(in: cropRect)
+            context.clip()
+        }
+
         let adjustedImage = try adjustedCGImage(from: decoded.cgImage, adjustments: editorState.adjustments)
         let clampedState = ProfileImageEditorState(
             zoom: min(max(editorState.zoom, editorConfiguration.minimumZoom), editorConfiguration.maximumZoom),
@@ -171,6 +209,10 @@ public enum ProfileImageRenderer {
         }
         context.translateBy(x: -canvasSize / 2, y: -canvasSize / 2)
         context.draw(adjustedImage, in: drawRect)
+
+        if useCircularMask {
+            context.restoreGState()
+        }
 
         guard let rendered = context.makeImage() else {
             throw ProfileImageRenderingError.exportFailed
