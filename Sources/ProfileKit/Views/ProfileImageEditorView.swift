@@ -51,6 +51,14 @@ public struct ProfileImageEditorView: View {
         // top VStack only needs to fit header + canvas + instructions
         // + toolbar, so the canvas's .aspectRatio(1,.fit) now has
         // enough vertical budget to resolve against the full width.
+        // Top inset uses SwiftUI's built-in safe-area tracking: the
+        // editor is typically presented via `.fullScreenCover`, which
+        // hands its content the full window rect. Without this, the
+        // header buttons end up riding behind the status bar / Dynamic
+        // Island on notched devices. `.safeAreaPadding(.top, 24)` adds
+        // 24pt of breathing room ABOVE the system inset; a plain
+        // `.padding(.top, 24)` would get swallowed by
+        // `.background(…, ignoresSafeAreaEdges: .all)` below.
         VStack(spacing: 20) {
             header
                 .padding(.horizontal, 24)
@@ -97,8 +105,17 @@ public struct ProfileImageEditorView: View {
                 .padding(.bottom, 24)
             }
         }
-        .padding(.top, 24)
-        .background(.background)
+        .safeAreaPadding(.top, 24)
+        .safeAreaPadding(.bottom, 8)
+        // Background extends edge-to-edge via `.ignoresSafeArea()` so
+        // the status-bar / home-indicator regions share the editor's
+        // fill color, while the content (`VStack` above) stays pinned
+        // inside the safe area.
+        .background {
+            Rectangle()
+                .fill(.background)
+                .ignoresSafeArea()
+        }
         .preferredColorScheme(configuration.appearance.preferredColorScheme)
         .onAppear {
             applyRecommendedInitialStateIfNeeded()
