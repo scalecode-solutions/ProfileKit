@@ -113,7 +113,13 @@ public enum ProfileImageRenderer {
                 brightness: editorState.adjustments.brightness,
                 contrast: editorState.adjustments.contrast,
                 saturation: editorState.adjustments.saturation,
-                rotationDegrees: editorConfiguration.allowsRotation ? editorState.adjustments.rotationDegrees : 0
+                // Fine rotation is only honored when the configuration
+                // allows it. Quantized (90° button) rotation is always
+                // honored — the configuration flag gates the slider, not
+                // the fundamental axis-swap action.
+                rotationDegrees: editorConfiguration.allowsRotation ? editorState.adjustments.rotationDegrees : 0,
+                quantizedRotationDegrees: editorState.adjustments.quantizedRotationDegrees,
+                flippedHorizontally: editorState.adjustments.flippedHorizontally
             )
         )
 
@@ -135,6 +141,12 @@ public enum ProfileImageRenderer {
         context.scaleBy(x: 1, y: -1)
         context.translateBy(x: canvasSize / 2, y: canvasSize / 2)
         context.rotate(by: viewport.rotationRadians)
+        // Apply horizontal flip around the canvas center. Order relative
+        // to rotation matters: flip-then-rotate yields the intuitive
+        // mirror-horizontally-across-the-visible-orientation behavior.
+        if clampedState.adjustments.flippedHorizontally {
+            context.scaleBy(x: -1, y: 1)
+        }
         context.translateBy(x: -canvasSize / 2, y: -canvasSize / 2)
         context.draw(adjustedImage, in: drawRect)
 

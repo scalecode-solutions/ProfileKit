@@ -37,6 +37,8 @@ public struct ProfileImageEditorView: View {
             }
             .aspectRatio(1, contentMode: .fit)
 
+            transformToolbar
+
             if configuration.showsLivePreview {
                 previewRow
             }
@@ -56,6 +58,46 @@ public struct ProfileImageEditorView: View {
         .background(.background)
         .onAppear {
             applyRecommendedInitialStateIfNeeded()
+        }
+    }
+
+    /// Coarse transform controls: rotate 90° left, rotate 90° right,
+    /// flip horizontally. These are always available — they're the
+    /// Apple Photos-style "this is obviously broken, fix the
+    /// orientation" affordances that users reach for first.
+    private var transformToolbar: some View {
+        HStack(spacing: 20) {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    editorState.adjustments.quantizedRotationDegrees -= 90
+                }
+            } label: {
+                Image(systemName: "rotate.left")
+                    .font(.title3)
+            }
+            .accessibilityLabel(configuration.texts.rotateLeftLabel)
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    editorState.adjustments.quantizedRotationDegrees += 90
+                }
+            } label: {
+                Image(systemName: "rotate.right")
+                    .font(.title3)
+            }
+            .accessibilityLabel(configuration.texts.rotateRightLabel)
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                    editorState.adjustments.flippedHorizontally.toggle()
+                }
+            } label: {
+                Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                    .font(.title3)
+            }
+            .accessibilityLabel(configuration.texts.flipHorizontalLabel)
+
+            Spacer()
         }
     }
 
@@ -93,6 +135,18 @@ public struct ProfileImageEditorView: View {
                     ProfileAvatarClipShape(shape: configuration.cropShape)
                         .stroke(.white.opacity(0.9), lineWidth: 2)
                 )
+                // Rule-of-thirds grid overlay, only during active cropping
+                // — never rendered into the exported image. Drawn on top
+                // of the clipped crop surface so it's bounded to the
+                // visible framing area.
+                .overlay {
+                    if configuration.showsGridOverlay {
+                        GridOfThirdsOverlay()
+                            .frame(width: cropSize, height: cropSize)
+                            .clipShape(ProfileAvatarClipShape(shape: configuration.cropShape))
+                            .allowsHitTesting(false)
+                    }
+                }
                 .contentShape(Rectangle())
                 .gesture(dragGesture(cropSize: cropSize))
                 .simultaneousGesture(magnificationGesture(cropSize: cropSize))
@@ -114,6 +168,21 @@ public struct ProfileImageEditorView: View {
     private func editableImage(cropSize: CGFloat) -> some View {
         let viewport = makeViewport(cropSize: cropSize)
         let pointOffset = viewport.pointOffset(from: viewport.clampedNormalizedOffset(editorState.offset))
+        // Visual-rotation contract matches the renderer's contract:
+        // fine slider rotation is gated by `allowsRotation`, quantized
+        // (90° button) rotation is always honored.
+        let displayRotation: Double = {
+            if configuration.allowsRotation {
+                return editorState.adjustments.effectiveRotationDegrees
+            } else {
+                return editorState.adjustments.quantizedRotationDegrees
+            }
+        }()
+        // Horizontal flip lives on the editable image, NOT on the
+        // container — this keeps gesture hit-testing on the un-flipped
+        // local coordinate space so drag-right always moves the image
+        // right, regardless of flip state.
+        let flipScale: CGFloat = editorState.adjustments.flippedHorizontally ? -1 : 1
 
         return Image(platformImage: sourceImage)
             .resizable()
@@ -121,8 +190,9 @@ public struct ProfileImageEditorView: View {
             .brightness(editorState.adjustments.brightness)
             .contrast(editorState.adjustments.contrast)
             .saturation(editorState.adjustments.saturation)
+            .scaleEffect(x: flipScale, y: 1)
             .scaleEffect(viewport.effectiveZoom)
-            .rotationEffect(.degrees(configuration.allowsRotation ? editorState.adjustments.rotationDegrees : 0))
+            .rotationEffect(.degrees(displayRotation))
             .offset(x: pointOffset.width, y: pointOffset.height)
     }
 
