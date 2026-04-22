@@ -36,12 +36,15 @@ public struct ProfileImageEditorContent: View {
     @State private var isZooming = false
     @State private var didApplyRecommendedInitialState = false
     /// Core-Image-filtered version of `sourceImage` matching the
-    /// currently selected effect. Nil when the effect is `.none` or
-    /// while a detached render is in-flight. The canvas and preview
-    /// row consult this via `displayImage`; the brightness / contrast
-    /// / saturation SwiftUI modifiers layer on top, matching the
-    /// renderer's effect-then-color-controls ordering.
+    /// currently selected effect, paired with the key that produced
+    /// it. `displayImage` only returns the image when its key matches
+    /// the current `effectPreviewKey` — which means during the brief
+    /// render window between tapping a new preset and the detached
+    /// filter completing, the canvas falls back to the raw source.
+    /// Prevents a stale prior-preset preview from reading as the
+    /// current selection when the user taps through effects quickly.
     @State private var effectPreviewImage: PKPlatformImage?
+    @State private var effectPreviewKeyLanded: EffectPreviewKey?
 
     public init(
         sourceImage: PKPlatformImage,
@@ -269,12 +272,20 @@ public struct ProfileImageEditorContent: View {
             .offset(x: pointOffset.width, y: pointOffset.height)
     }
 
-    /// Image shown in the canvas + preview row. Falls back to the raw
-    /// `sourceImage` while an effect preview is being rendered, so the
-    /// user never sees an empty canvas — brief stale-to-filtered
-    /// transition is preferable to a flash.
+    /// Image shown in the canvas + preview row. Returns the cached
+    /// effect preview only when its key matches the current effect
+    /// selection; otherwise falls back to the raw source. This means
+    /// rapidly tapping through presets shows "source → filtered" per
+    /// selection rather than "previous filter → current filter",
+    /// which would briefly misrepresent the user's intent on each tap.
     private var displayImage: PKPlatformImage {
-        effectPreviewImage ?? sourceImage
+        guard
+            let preview = effectPreviewImage,
+            effectPreviewKeyLanded == effectPreviewKey
+        else {
+            return sourceImage
+        }
+        return preview
     }
 
     /// Section above the adjustment sliders: heading + horizontal
@@ -430,12 +441,23 @@ public struct ProfileImageEditorContent: View {
 
     // MARK: - Effect preview
 
-    /// Composite key that triggers `refreshEffectPreview` whenever
-    /// either the source image or the selected effect changes. String
-    /// because `.task(id:)` takes a single `Hashable` and stringifying
-    /// the pair is cheaper than introducing a dedicated struct.
-    private var effectPreviewKey: String {
-        "\(ObjectIdentifier(sourceImage).hashValue)|\(editorState.adjustments.effect.identifier)"
+    /// Composite key that drives the `.task(id:)` for the effect
+    /// preview. Hashable struct (rather than stringified hashes) so
+    /// `.task` gets type-safe equality and collisions are impossible.
+    /// Embedding the full `ProfileImageEffect` — not just its
+    /// `identifier` — means parameterized variants (e.g. two `.sepia`
+    /// intensities) retrigger the render if the UI ever exposes a
+    /// parameter slider.
+    private struct EffectPreviewKey: Hashable {
+        let sourceID: ObjectIdentifier
+        let effect: ProfileImageEffect
+    }
+
+    private var effectPreviewKey: EffectPreviewKey {
+        EffectPreviewKey(
+            sourceID: ObjectIdentifier(sourceImage),
+            effect: editorState.adjustments.effect
+        )
     }
 
     /// Refresh `effectPreviewImage` for the current effect. Identity
@@ -444,11 +466,23 @@ public struct ProfileImageEditorContent: View {
     /// published back on the main actor if the task hasn't been
     /// cancelled (which `.task(id:)` does automatically when the id
     /// changes mid-render).
+    ///
+    /// Cancellation note: `Task.detached` deliberately doesn't inherit
+    /// the parent task's cancellation — switching this to a child
+    /// `Task { }` would inherit MainActor isolation and run the filter
+    /// on the main thread, defeating the offload. Rapid preset
+    /// switching can therefore queue multiple concurrent background
+    /// renders; their results land after the parent task is cancelled
+    /// and are discarded via the `Task.isCancelled` check + the
+    /// key-match gate on `displayImage`. Redundant CPU but no
+    /// correctness issue.
     private func refreshEffectPreview() async {
-        let effect = editorState.adjustments.effect
+        let currentKey = effectPreviewKey
+        let effect = currentKey.effect
 
         if effect.isIdentity {
             effectPreviewImage = nil
+            effectPreviewKeyLanded = currentKey
             return
         }
 
@@ -459,6 +493,7 @@ public struct ProfileImageEditorContent: View {
 
         guard !Task.isCancelled else { return }
         effectPreviewImage = rendered
+        effectPreviewKeyLanded = currentKey
     }
 
     /// Downsample + filter helper. Matches the rendering contract of
