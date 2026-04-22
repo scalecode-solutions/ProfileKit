@@ -35,6 +35,13 @@ public struct ProfileImageEditorContent: View {
     @State private var zoomStart: CGFloat = 1
     @State private var isZooming = false
     @State private var didApplyRecommendedInitialState = false
+    /// Core-Image-filtered version of `sourceImage` matching the
+    /// currently selected effect. Nil when the effect is `.none` or
+    /// while a detached render is in-flight. The canvas and preview
+    /// row consult this via `displayImage`; the brightness / contrast
+    /// / saturation SwiftUI modifiers layer on top, matching the
+    /// renderer's effect-then-color-controls ordering.
+    @State private var effectPreviewImage: PKPlatformImage?
 
     public init(
         sourceImage: PKPlatformImage,
@@ -100,6 +107,15 @@ public struct ProfileImageEditorContent: View {
         }
         .onAppear {
             applyRecommendedInitialStateIfNeeded()
+        }
+        // Keep the canvas / preview-row image in sync with the current
+        // effect preset. Keyed by both source identity and effect so
+        // switching source images OR flipping presets both retrigger.
+        // Detached filter pass keeps the main actor responsive while
+        // the effect renders (same pattern as the effects strip's
+        // per-tile thumbnailing).
+        .task(id: effectPreviewKey) {
+            await refreshEffectPreview()
         }
         // Host-driven reset: when the binding flips back to identity
         // (typically because the host called `editorState.reset()`),
@@ -241,7 +257,7 @@ public struct ProfileImageEditorContent: View {
         // right, regardless of flip state.
         let flipScale: CGFloat = editorState.adjustments.flippedHorizontally ? -1 : 1
 
-        return Image(platformImage: sourceImage)
+        return Image(platformImage: displayImage)
             .resizable()
             .frame(width: viewport.baseDisplaySize.width, height: viewport.baseDisplaySize.height)
             .brightness(editorState.adjustments.brightness)
@@ -251,6 +267,14 @@ public struct ProfileImageEditorContent: View {
             .scaleEffect(viewport.effectiveZoom)
             .rotationEffect(.degrees(displayRotation))
             .offset(x: pointOffset.width, y: pointOffset.height)
+    }
+
+    /// Image shown in the canvas + preview row. Falls back to the raw
+    /// `sourceImage` while an effect preview is being rendered, so the
+    /// user never sees an empty canvas — brief stale-to-filtered
+    /// transition is preferable to a flash.
+    private var displayImage: PKPlatformImage {
+        effectPreviewImage ?? sourceImage
     }
 
     /// Section above the adjustment sliders: heading + horizontal
@@ -403,4 +427,83 @@ public struct ProfileImageEditorContent: View {
         editorState = viewport.recommendedInitialState()
         didApplyRecommendedInitialState = true
     }
+
+    // MARK: - Effect preview
+
+    /// Composite key that triggers `refreshEffectPreview` whenever
+    /// either the source image or the selected effect changes. String
+    /// because `.task(id:)` takes a single `Hashable` and stringifying
+    /// the pair is cheaper than introducing a dedicated struct.
+    private var effectPreviewKey: String {
+        "\(ObjectIdentifier(sourceImage).hashValue)|\(editorState.adjustments.effect.identifier)"
+    }
+
+    /// Refresh `effectPreviewImage` for the current effect. Identity
+    /// effects clear the cache (canvas shows raw `sourceImage`);
+    /// otherwise the filter runs on a detached task and the result is
+    /// published back on the main actor if the task hasn't been
+    /// cancelled (which `.task(id:)` does automatically when the id
+    /// changes mid-render).
+    private func refreshEffectPreview() async {
+        let effect = editorState.adjustments.effect
+
+        if effect.isIdentity {
+            effectPreviewImage = nil
+            return
+        }
+
+        let source = sourceImage
+        let rendered = await Task.detached(priority: .userInitiated) {
+            ProfileImageEditorContent.makeEffectPreview(source: source, effect: effect)
+        }.value
+
+        guard !Task.isCancelled else { return }
+        effectPreviewImage = rendered
+    }
+
+    /// Downsample + filter helper. Matches the rendering contract of
+    /// `ProfileImageRenderer.adjustedCGImage` (same `EffectsPipeline`)
+    /// so the canvas preview and the committed export can't drift.
+    /// Downsamples to a 1024pt longest edge — enough detail for any
+    /// typical canvas size, fast enough that a filter + encode round
+    /// trip lands in a frame or two on real devices.
+    nonisolated private static func makeEffectPreview(source: PKPlatformImage, effect: ProfileImageEffect) -> PKPlatformImage? {
+        guard let cgSource = PlatformImageBridge.cgImage(from: source) else { return nil }
+
+        let pixelSize = PlatformImageBridge.pixelSize(for: source)
+        let longEdge = max(pixelSize.width, pixelSize.height)
+        let maxDimension: CGFloat = 1024
+        let scale = longEdge > maxDimension ? maxDimension / longEdge : 1.0
+        let targetWidth = max(1, Int((pixelSize.width * scale).rounded()))
+        let targetHeight = max(1, Int((pixelSize.height * scale).rounded()))
+
+        guard let context = CGContext(
+            data: nil,
+            width: targetWidth,
+            height: targetHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(cgSource, in: CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
+
+        guard let downsampled = context.makeImage() else { return nil }
+
+        let ciImage = CIImage(cgImage: downsampled)
+        let filtered = EffectsPipeline.apply(effect, to: ciImage)
+        guard let filteredCG = previewCIContext.createCGImage(filtered, from: ciImage.extent) else {
+            return nil
+        }
+
+        return PlatformImageBridge.makeImage(from: filteredCG)
+    }
+
+    /// Dedicated CIContext for the canvas preview. Separate from the
+    /// effects-strip thumbnail context so concurrent renders (the
+    /// canvas filter + a strip tile filter) don't serialize on the
+    /// same CIContext. `nonisolated` because the View is MainActor-
+    /// isolated but the preview render runs detached.
+    nonisolated private static let previewCIContext = CIContext(options: nil)
 }
