@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8.1
+
+Patch release: fix for the effect preset not appearing in the editor
+canvas or preview row while editing (effects were still correctly
+baked into the committed export).
+
+### Fixed
+
+- **Live canvas + preview row now show the selected effect.** The
+  editor's `editableImage(cropSize:)` applied `.brightness`,
+  `.contrast`, `.saturation` as SwiftUI modifiers but had no
+  equivalent for Core Image effects, so picking a preset from the
+  film strip left the live canvas unfiltered. The committed render
+  has always been correct (runs the full `EffectsPipeline`); only the
+  previews were missing the filter. Fixed by caching a
+  Core-Image-filtered `PKPlatformImage` keyed by `(source, effect)`
+  and consulting it from the display path. Brightness / contrast /
+  saturation sliders still layer on top, matching the renderer's
+  effect-then-color-controls ordering.
+
 ## 0.8.0
 
 Initials as a first-class avatar source, photo effects gallery, and a
