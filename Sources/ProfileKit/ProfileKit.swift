@@ -7,5 +7,5 @@ public enum ProfileKit {
     /// Semantic version string. Bump when releasing. Exposed for
     /// diagnostics — host apps can include this in crash reports and
     /// telemetry to correlate issues against ProfileKit releases.
-    public static let version = "0.8.0"
+    public static let version = "0.8.1"
 }
